@@ -360,8 +360,8 @@ function initAR() {
   anchor.add(city);
   city.visible = false;
   
-  // Initialize city at origin, facing camera
-  city.position.set(0, 0, 0);
+  // Position city ABOVE the anchor (floating above QR)
+  city.position.set(0, 0.3, 0); // Elevated 0.3 units above the QR plane
   city.rotation.set(0, 0, 0);
 
   buildCity(city);
@@ -387,12 +387,12 @@ function buildCity(root) {
   const mAccent= new THREE.MeshPhongMaterial({ color:0x00e5ff, emissive:0x004455, shininess:150, specular:0x00e5ff });
   const mGold  = new THREE.MeshPhongMaterial({ color:0xffdd00, emissive:0x332200, shininess:90 });
   const mRoad  = new THREE.MeshPhongMaterial({ color:0x181822, shininess:4 });
-  const mGnd   = new THREE.MeshPhongMaterial({ color:0x111118, shininess:2 });
+  const mGnd   = new THREE.MeshPhongMaterial({ color:0x111118, shininess:2, transparent:true, opacity:0.7 });
   const mWin   = new THREE.MeshPhongMaterial({ color:0x1a3355, emissive:0x0a1a2a, shininess:70, transparent:true, opacity:.82 });
   const mNeon  = c => new THREE.MeshPhongMaterial({ color:c, emissive:c, emissiveIntensity:1.3 });
   const mTree  = new THREE.MeshPhongMaterial({ color:0x1a4422, emissive:0x060f08 });
 
-  // Ground
+  // Ground - semi-transparent to show it's floating
   const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mGnd);
   gnd.rotation.x = -Math.PI / 2;
   gnd.receiveShadow = true;
@@ -483,7 +483,7 @@ function buildCity(root) {
   // Ground glow
   const gg = new THREE.Mesh(new THREE.CircleGeometry(.26, 32),
     new THREE.MeshBasicMaterial({ color:0x001a22, transparent:true, opacity:.65 }));
-  gg.rotation.x = -Math.PI / 2; gg.position.y = .0003; root.add(gg);
+  gg.rotation.x = -Math.PI / 2; gg.position.y = 0.0003; root.add(gg);
 
   // Central plaza
   const pl = new THREE.Mesh(new THREE.BoxGeometry(.11, .005, .11),
@@ -521,8 +521,8 @@ function arLoop() {
   T += 0.016;
   frameN++;
 
-  // Track QR every 3 frames
-  if (frameN % 3 === 0 && jsqrReady && aVid.readyState >= 2 && aVid.videoWidth) {
+  // Track QR every 2 frames for better responsiveness
+  if (frameN % 2 === 0 && jsqrReady && aVid.readyState >= 2 && aVid.videoWidth) {
     trackQR();
   }
 
@@ -531,15 +531,21 @@ function arLoop() {
     spawnPct = Math.min(1, spawnPct + 0.04);
   }
 
-  // Apply smooth transform
-  anchor.position.lerp(targetPos, 0.3);
-  anchor.rotation.x += (targetRot.x - anchor.rotation.x) * 0.25;
-  anchor.rotation.y += (targetRot.y - anchor.rotation.y) * 0.25;
-  anchor.rotation.z += (targetRot.z - anchor.rotation.z) * 0.25;
+  // Apply smooth transform to anchor (which moves the entire city with it)
+  anchor.position.lerp(targetPos, 0.35);
+  anchor.rotation.x += (targetRot.x - anchor.rotation.x) * 0.3;
+  anchor.rotation.y += (targetRot.y - anchor.rotation.y) * 0.3;
+  anchor.rotation.z += (targetRot.z - anchor.rotation.z) * 0.3;
   
   const currentScale = city.scale.x;
-  const newScale = currentScale + (targetScale * spawnPct - currentScale) * 0.2;
+  const newScale = currentScale + (targetScale * spawnPct - currentScale) * 0.22;
   city.scale.setScalar(newScale);
+
+  // Subtle floating animation
+  if (city.visible) {
+    city.position.y = 0.3 + Math.sin(T * 0.8) * 0.008;
+    city.rotation.y = Math.sin(T * 0.3) * 0.02;
+  }
 
   // Staleness
   if (staleness > MAX_STALE) {
@@ -573,17 +579,17 @@ function trackQR() {
 function applyQRTransform(loc) {
   const W = 640, H = 480;
 
-  // Normalize corners
+  // Normalize corners to [0,1]
   const TL = { x: loc.topLeftCorner.x / W, y: loc.topLeftCorner.y / H };
   const TR = { x: loc.topRightCorner.x / W, y: loc.topRightCorner.y / H };
   const BR = { x: loc.bottomRightCorner.x / W, y: loc.bottomRightCorner.y / H };
   const BL = { x: loc.bottomLeftCorner.x / W, y: loc.bottomLeftCorner.y / H };
 
-  // Center in NDC
+  // Center in NDC space
   const cx = ((TL.x + TR.x + BR.x + BL.x) / 4 - 0.5) * 2;
   const cy = -((TL.y + TR.y + BR.y + BL.y) / 4 - 0.5) * 2;
 
-  // Edge lengths
+  // Calculate QR dimensions
   const edgeT = Math.hypot(TR.x - TL.x, TR.y - TL.y);
   const edgeB = Math.hypot(BR.x - BL.x, BR.y - BL.y);
   const edgeL = Math.hypot(BL.x - TL.x, BL.y - TL.y);
@@ -591,11 +597,11 @@ function applyQRTransform(loc) {
   const ndcW  = (edgeT + edgeB) / 2;
   const ndcH  = (edgeL + edgeR) / 2;
 
-  // Depth estimation - improved formula
+  // Depth estimation
   const ndcAvg = (ndcW + ndcH) / 2;
-  const depth  = THREE.MathUtils.clamp(0.18 / (ndcAvg + 0.001), 0.08, 8.0);
+  const depth  = THREE.MathUtils.clamp(0.2 / (ndcAvg + 0.001), 0.1, 10.0);
 
-  // World position
+  // Convert NDC to world space
   const fov  = THREE.MathUtils.degToRad(cam.fov);
   const scH  = 2 * Math.tan(fov / 2) * depth;
   const scW  = scH * cam.aspect;
@@ -605,26 +611,26 @@ function applyQRTransform(loc) {
 
   targetPos.set(wx, wy, wz);
 
-  // Rotation - improved calculation
+  // Calculate rotation from QR orientation
   const yaw   = Math.atan2(-(TR.y - TL.y), TR.x - TL.x);
-  const pitch = Math.atan2((edgeT - edgeB) * 2.5, 1.0) * 0.6;
-  const roll  = Math.atan2((edgeR - edgeL) * 2.5, 1.0) * 0.6;
+  const pitch = Math.atan2((edgeT - edgeB) * 2.2, 1.0) * 0.55;
+  const roll  = Math.atan2((edgeR - edgeL) * 2.2, 1.0) * 0.55;
 
   targetRot.set(pitch, yaw, roll);
 
-  // Scale - bigger multiplier for more visible city
+  // Scale based on QR size
   const qrWorld = ndcW * scW;
-  targetScale = THREE.MathUtils.clamp(qrWorld * 12, 0.05, 4.0);
+  targetScale = THREE.MathUtils.clamp(qrWorld * 14, 0.06, 5.0);
 }
 
 /* =====================================================
    ANNOTATIONS
 ===================================================== */
 const ANNS = [
-  { id: 'ann-a', lp: [-0.18, 0.65, 0],  side: 'left'  },
-  { id: 'ann-b', lp: [ 0.18, 0.60, 0],  side: 'right' },
-  { id: 'ann-c', lp: [-0.10, -0.02, 0], side: 'left'  },
-  { id: 'ann-d', lp: [ 0.09, 0.44, 0],  side: 'right' },
+  { id: 'ann-a', lp: [-0.18, 0.95, 0],  side: 'left'  },
+  { id: 'ann-b', lp: [ 0.18, 0.90, 0],  side: 'right' },
+  { id: 'ann-c', lp: [-0.10, 0.28, 0],  side: 'left'  },
+  { id: 'ann-d', lp: [ 0.09, 0.74, 0],  side: 'right' },
 ];
 const ANN_POS = {
   'ann-a': { left: '3vw',  top: '18%', right: 'auto', bottom: 'auto' },

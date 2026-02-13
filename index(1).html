@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>AR Product Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--surface:#0f0f1a;--border:#1e1e32;
+  --accent:#00ffe0;--accent2:#ff2060;--accent3:#ffe100;
+  --text:#eeeeff;--muted:#4a4a88;
+  --mono:'Space Mono',monospace;--display:'Syne',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;touch-action:none}
+
+/* ─── SCAN SCREEN ─── */
+#scan-screen{
+  position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:var(--bg);
+}
+.grid-lines{
+  position:fixed;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,255,224,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,255,224,.03) 1px,transparent 1px);
+  background-size:44px 44px;
+}
+.scan-header{
+  position:absolute;top:0;left:0;right:0;
+  padding:1.4rem 1.6rem;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(7,7,14,.9) 0%,transparent 100%);
+  z-index:2;
+}
+.brand{font-family:var(--display);font-size:.95rem;font-weight:800;letter-spacing:.05em;color:var(--text)}
+.brand span{color:var(--accent)}
+.status-pill{
+  display:flex;align-items:center;gap:.4rem;
+  background:rgba(0,255,224,.08);border:1px solid rgba(0,255,224,.2);
+  border-radius:50px;padding:.28rem .85rem;font-size:.6rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse-a 1.4s infinite}
+
+/* Viewfinder */
+.viewfinder-wrap{
+  position:relative;width:min(340px,85vw);aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:2rem;
+}
+#scan-video{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;border-radius:16px;filter:brightness(.9);
+}
+#scan-canvas-hidden{display:none}
+.vf-frame{
+  position:absolute;inset:0;border-radius:16px;pointer-events:none;z-index:2;
+}
+/* Corner brackets */
+.vf-frame::before,.vf-frame::after,
+.vf-corner-br,.vf-corner-bl{
+  content:'';position:absolute;width:28px;height:28px;
+  border-color:var(--accent);border-style:solid;
+}
+.vf-frame::before{top:-1px;left:-1px;border-width:3px 0 0 3px;border-radius:6px 0 0 0}
+.vf-frame::after{top:-1px;right:-1px;border-width:3px 3px 0 0;border-radius:0 6px 0 0}
+.vf-corner-br{bottom:-1px;right:-1px;border-width:0 3px 3px 0;border-radius:0 0 6px 0}
+.vf-corner-bl{bottom:-1px;left:-1px;border-width:0 0 3px 3px;border-radius:0 0 0 6px}
+.scan-line{
+  position:absolute;left:6%;right:6%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  top:0;animation:scan-anim 2.2s ease-in-out infinite;z-index:3;opacity:.8;
+}
+
+/* QR Lock overlay (inside viewfinder) */
+.qr-lock-box{
+  position:absolute;border:2px solid var(--accent);border-radius:6px;
+  box-shadow:0 0 18px rgba(0,255,224,.35),inset 0 0 18px rgba(0,255,224,.06);
+  transition:all .18s ease;z-index:4;pointer-events:none;
+  opacity:0;
+}
+.qr-lock-box.visible{opacity:1}
+
+.scan-instructions{
+  font-size:.75rem;line-height:1.7;color:var(--muted);text-align:center;
+  max-width:300px;letter-spacing:.03em;
+}
+.scan-instructions strong{color:var(--text)}
+
+/* BEGIN button (appears when QR locked) */
+#begin-btn{
+  position:absolute;bottom:2.4rem;left:50%;transform:translateX(-50%) scale(0);
+  background:linear-gradient(135deg,var(--accent),#00ccb0);
+  color:#07070e;font-family:var(--display);font-size:1.1rem;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;
+  border:none;border-radius:50px;padding:1rem 3rem;cursor:pointer;
+  box-shadow:0 0 40px rgba(0,255,224,.4);
+  transition:transform .45s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;
+  z-index:20;white-space:nowrap;
+}
+#begin-btn.show{transform:translateX(-50%) scale(1)}
+#begin-btn:active{transform:translateX(-50%) scale(.96)}
+#begin-btn .arrow{margin-left:.5rem;font-size:1rem}
+.begin-sub{
+  position:absolute;bottom:1.2rem;left:50%;transform:translateX(-50%);
+  font-size:.6rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;
+  opacity:0;transition:opacity .4s .5s;white-space:nowrap;
+}
+.begin-sub.show{opacity:1}
+
+/* ─── AR SCREEN ─── */
+#ar-screen{
+  position:fixed;inset:0;z-index:20;display:none;background:#000;
+}
+#ar-video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+}
+#ar-canvas{
+  position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
+}
+
+/* AR HUD top */
+.ar-hud{
+  position:absolute;top:0;left:0;right:0;z-index:30;
+  padding:1rem 1.4rem;
+  background:linear-gradient(180deg,rgba(0,0,0,.8) 0%,transparent 100%);
+  display:flex;align-items:center;gap:.8rem;pointer-events:none;
+}
+.ar-hud-title{font-family:var(--display);font-size:1rem;font-weight:800;color:#fff;flex:1}
+.ar-live{
+  display:flex;align-items:center;gap:.35rem;font-size:.58rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+  background:rgba(0,255,224,.1);border:1px solid rgba(0,255,224,.25);
+  border-radius:50px;padding:.28rem .75rem;
+}
+.ar-close{
+  width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.1);color:#fff;font-size:.95rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:auto;transition:background .2s;
+}
+.ar-close:hover{background:rgba(255,255,255,.25)}
+
+/* ─── SVG ANNOTATION OVERLAY ─── */
+#annotations-svg{
+  position:absolute;inset:0;width:100%;height:100%;z-index:25;
+  pointer-events:none;overflow:visible;
+}
+
+/* Annotation text panels */
+.ann-panel{
+  position:absolute;z-index:26;pointer-events:none;
+  opacity:0;transition:opacity .5s;
+}
+.ann-panel.visible{opacity:1}
+.ann-label{
+  font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:.18rem;
+  display:flex;align-items:center;gap:.4rem;
+}
+.ann-label::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.ann-value{
+  font-family:var(--display);font-size:.95rem;font-weight:800;
+  color:var(--text);line-height:1;margin-bottom:.12rem;
+}
+.ann-value.price{color:var(--accent3);font-size:1.15rem}
+.ann-sub{font-size:.58rem;color:var(--muted);letter-spacing:.07em}
+.ann-bar{
+  width:80px;height:2px;background:linear-gradient(90deg,var(--accent),transparent);
+  margin-top:.4rem;border-radius:2px;
+}
+.ann-bar.right{background:linear-gradient(270deg,var(--accent),transparent)}
+.ann-nums{
+  font-size:.52rem;color:var(--muted);letter-spacing:.12em;margin-top:.3rem;
+  font-family:var(--mono);line-height:1.8;
+}
+
+/* Scanning complete flash */
+.spawn-flash{
+  position:absolute;inset:0;background:rgba(0,255,224,.06);
+  pointer-events:none;z-index:28;opacity:0;
+  animation:flash-in .6s ease-out forwards;
+}
+
+/* ─── BOTTOM INFO STRIP ─── */
+.ar-bottom{
+  position:absolute;bottom:0;left:0;right:0;z-index:30;
+  background:linear-gradient(0deg,rgba(0,0,0,.85) 0%,transparent 100%);
+  padding:1.5rem 1.5rem 1.2rem;display:flex;align-items:flex-end;gap:1rem;
+}
+.product-id{
+  font-size:.58rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem;
+}
+.product-name{
+  font-family:var(--display);font-size:1.3rem;font-weight:800;color:var(--text);line-height:1;margin-bottom:.2rem;
+}
+.product-sku{font-size:.6rem;color:var(--accent);letter-spacing:.15em}
+.product-price{
+  font-family:var(--display);font-size:1.6rem;font-weight:800;color:var(--accent3);
+  margin-left:auto;text-align:right;
+}
+.product-price .currency{font-size:.85rem;vertical-align:super}
+.ar-bottom-divider{width:1px;height:48px;background:var(--border);flex-shrink:0}
+
+/* Animations */
+@keyframes pulse-a{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.85)}}
+@keyframes scan-anim{0%{top:4%}50%{top:94%}100%{top:4%}}
+@keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes flash-in{0%{opacity:.5}100%{opacity:0}}
+@keyframes line-grow{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes float-obj{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════
+     SCAN SCREEN
+═══════════════════════════════════ -->
+<div id="scan-screen">
+  <div class="grid-lines"></div>
+
+  <div class="scan-header">
+    <span class="brand">AR<span>VIEW</span></span>
+    <div class="status-pill"><span class="pulse-dot"></span><span id="scan-status-txt">SCANNING</span></div>
+  </div>
+
+  <div class="viewfinder-wrap">
+    <video id="scan-video" autoplay playsinline muted></video>
+    <canvas id="scan-canvas-hidden"></canvas>
+
+    <div class="vf-frame">
+      <div class="vf-corner-br"></div>
+      <div class="vf-corner-bl"></div>
+      <div class="scan-line"></div>
+    </div>
+
+    <!-- QR detected lock box -->
+    <div class="qr-lock-box" id="qr-lock-box"></div>
+  </div>
+
+  <p class="scan-instructions">
+    <strong>Point at any QR code</strong><br/>
+    We'll lock onto it — then tap BEGIN<br/>to launch the AR experience
+  </p>
+
+  <button id="begin-btn" onclick="launchAR()">
+    BEGIN <span class="arrow">→</span>
+  </button>
+  <div class="begin-sub" id="begin-sub">QR LOCKED · READY TO LAUNCH</div>
+</div>
+
+<!-- ═══════════════════════════════════
+     AR SCREEN
+═══════════════════════════════════ -->
+<div id="ar-screen">
+  <video id="ar-video" autoplay playsinline muted></video>
+  <canvas id="ar-canvas"></canvas>
+
+  <!-- SVG lines for annotations -->
+  <svg id="annotations-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <!-- Annotation panels (positioned absolutely via JS) -->
+  <div class="ann-panel" id="ann-name">
+    <div class="ann-label">Product</div>
+    <div class="ann-value">AIR ZOOM X</div>
+    <div class="ann-sub">Carbon-Fiber Sole · React Foam</div>
+    <div class="ann-bar"></div>
+    <div class="ann-nums">
+      SKU · 0041-229-C<br/>
+      BATCH · 2024-NOV-07<br/>
+      ORIGIN · HO CHI MINH
+    </div>
+  </div>
+
+  <div class="ann-panel" id="ann-price">
+    <div class="ann-label" style="justify-content:flex-end">Price</div>
+    <div class="ann-value price">$219<span style="font-size:.7rem;color:var(--muted)">.99</span></div>
+    <div class="ann-sub" style="text-align:right">MSRP · USD</div>
+    <div class="ann-bar right"></div>
+    <div class="ann-nums" style="text-align:right">
+      STOCK · 14 UNITS<br/>
+      SIZES · 7–13 US<br/>
+      RATING · ★★★★½
+    </div>
+  </div>
+
+  <div class="ann-panel" id="ann-specs">
+    <div class="ann-label">Specs</div>
+    <div class="ann-value" style="font-size:.8rem;line-height:1.4">280g / 9.9oz</div>
+    <div class="ann-sub">Weight per unit</div>
+    <div class="ann-bar" style="width:50px"></div>
+    <div class="ann-nums">
+      DROP · 10mm<br/>
+      STACK · 38mm HEEL<br/>
+      UPPER · FLYKNIT
+    </div>
+  </div>
+
+  <div class="ann-panel" id="ann-tag">
+    <div style="
+      background:rgba(0,255,224,.09);border:1px solid rgba(0,255,224,.25);
+      border-radius:6px;padding:.4rem .7rem;display:inline-block;
+    ">
+      <div style="font-size:.55rem;letter-spacing:.14em;color:var(--accent)">VERIFIED AUTHENTIC</div>
+      <div style="font-size:.7rem;color:var(--text);margin-top:.15rem;font-family:var(--display);font-weight:700">NRC 2024</div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="ar-hud">
+    <span class="ar-hud-title">AR PRODUCT VIEW</span>
+    <div class="ar-live"><span class="pulse-dot"></span>LIVE AR</div>
+    <button class="ar-close" onclick="closeAR()">✕</button>
+  </div>
+
+  <!-- Bottom strip -->
+  <div class="ar-bottom">
+    <div>
+      <div class="product-id">AR/2024/PRO</div>
+      <div class="product-name">Air Zoom X</div>
+      <div class="product-sku">SKU · 0041-229-C</div>
+    </div>
+    <div class="ar-bottom-divider"></div>
+    <div class="product-price"><span class="currency">$</span>219<span style="font-size:.8rem">.99</span></div>
+  </div>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   PRODUCT DATA — edit this to change what shows in AR
+═══════════════════════════════════════════════════════ */
+const PRODUCT = {
+  name:     'Air Zoom X',
+  subtitle: 'Carbon-Fiber Sole · React Foam',
+  sku:      '0041-229-C',
+  price:    '$219.99',
+  weight:   '280g / 9.9oz',
+  batch:    '2024-NOV-07',
+  origin:   'Ho Chi Minh City',
+  stock:    '14 Units',
+  sizes:    '7–13 US',
+  rating:   '★★★★½',
+  drop:     '10mm',
+  stack:    '38mm Heel',
+  upper:    'Flyknit',
+  certified:'NRC 2024',
+};
+
+/* ═══════════════════════════════════════════════════════
+   SCAN SCREEN STATE
+═══════════════════════════════════════════════════════ */
+let scanStream = null;
+let scanInterval = null;
+let qrLocked = false;
+let lockedQRCorners = null;
+const scanVideo  = document.getElementById('scan-video');
+const scanHidden = document.getElementById('scan-canvas-hidden');
+let shCtx;
+
+async function initScan() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    scanVideo.srcObject = scanStream;
+    await new Promise(r => scanVideo.onloadedmetadata = r);
+    scanVideo.play();
+    scanHidden.width  = 640;
+    scanHidden.height = 480;
+    shCtx = scanHidden.getContext('2d', { willReadFrequently: true });
+  } catch(e) {
+    document.getElementById('scan-status-txt').textContent = 'CAM DENIED';
+    return;
+  }
+
+  // Load jsQR
+  if (!window.jsQR) {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    s.onload = startScan;
+    document.head.appendChild(s);
+  } else { startScan(); }
+}
+
+function startScan() {
+  scanInterval = setInterval(scanTick, 200); // 5Hz is plenty for the lock-on UX
+}
+
+function scanTick() {
+  if (!scanVideo.readyState || scanVideo.readyState < 2 || !scanVideo.videoWidth) return;
+  shCtx.drawImage(scanVideo, 0, 0, 640, 480);
+  const img  = shCtx.getImageData(0, 0, 640, 480);
+  const code = jsQR(img.data, 640, 480, { inversionAttempts: 'dontInvert' });
+
+  if (code) {
+    if (!qrLocked) {
+      qrLocked = true;
+      document.getElementById('scan-status-txt').textContent = 'LOCKED';
+      document.getElementById('begin-btn').classList.add('show');
+      document.getElementById('begin-sub').classList.add('show');
+    }
+    // Update lock box position relative to viewfinder
+    updateLockBox(code.location);
+    lockedQRCorners = code.location;
+  } else {
+    if (qrLocked) {
+      // Briefly keep showing locked state — only reset after 60 frames (~12s)
+    }
+  }
+}
+
+function updateLockBox(loc) {
+  const vf = document.querySelector('.viewfinder-wrap');
+  const vfRect = vf.getBoundingClientRect();
+  const vfW = vfRect.width, vfH = vfRect.height;
+
+  const xs = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
+  const ys = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
+  const pad = 8;
+  const x0 = (Math.min(...xs) / 640) * vfW - pad;
+  const y0 = (Math.min(...ys) / 480) * vfH - pad;
+  const w  = (Math.max(...xs) / 640) * vfW - x0 + pad*2;
+  const h  = (Math.max(...ys) / 480) * vfH - y0 + pad*2;
+
+  const box = document.getElementById('qr-lock-box');
+  box.classList.add('visible');
+  box.style.cssText = `left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAUNCH AR
+═══════════════════════════════════════════════════════ */
+function launchAR() {
+  // Stop scan
+  clearInterval(scanInterval);
+  document.getElementById('scan-screen').style.display = 'none';
+  document.getElementById('ar-screen').style.display  = 'block';
+
+  // Pass camera stream to AR video
+  const arVid = document.getElementById('ar-video');
+  arVid.srcObject = scanStream; // reuse same stream
+  arVid.play();
+
+  initAR();
+}
+
+function closeAR() {
+  stopAR();
+  document.getElementById('ar-screen').style.display  = 'none';
+  document.getElementById('scan-screen').style.display = 'flex';
+  // Restart scan
+  qrLocked = false;
+  document.getElementById('begin-btn').classList.remove('show');
+  document.getElementById('begin-sub').classList.remove('show');
+  document.getElementById('qr-lock-box').classList.remove('visible');
+  document.getElementById('scan-status-txt').textContent = 'SCANNING';
+  startScan();
+}
+
+/* ═══════════════════════════════════════════════════════
+   AR ENGINE
+═══════════════════════════════════════════════════════ */
+let arActive = false;
+let renderer, scene, cam, raf;
+let product3D = null;
+const arVidEl  = document.getElementById('ar-video');
+const arCanv   = document.getElementById('ar-canvas');
+
+// QR tracking vars
+let trackCv, trackCtx;
+let qrPos = null; // { cx, cy, sizeNDC }
+let T = 0;
+let annotationsShown = false;
+
+function initAR() {
+  arActive = true;
+
+  renderer = new THREE.WebGLRenderer({ canvas: arCanv, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+
+  scene = new THREE.Scene();
+  cam   = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 500);
+  cam.position.set(0, 0, 0);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  sun.position.set(3, 6, 4); scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x00ffc8, 0xff2060, 0.35));
+
+  // Build the 3D product (procedural shoe stand-in; swap URL below for a real .glb)
+  product3D = buildProceduralProduct();
+  product3D.scale.setScalar(0.001); // start tiny
+  product3D.visible = false;
+  scene.add(product3D);
+
+  // Track canvas for continuous QR following
+  trackCv  = document.createElement('canvas');
+  trackCv.width = 640; trackCv.height = 480;
+  trackCtx = trackCv.getContext('2d', { willReadFrequently: true });
+
+  window.addEventListener('resize', onARResize);
+  arLoop();
+
+  // After 800ms, spawn (scan frame to get initial pos then pop in)
+  setTimeout(spawnProduct, 800);
+}
+
+/* ─ Procedural product: a stylised shoe silhouette ─ */
+function buildProceduralProduct() {
+  const g = new THREE.Group();
+
+  const white = new THREE.MeshPhongMaterial({ color: 0xf0f0f0, shininess: 70, emissive: 0x111111 });
+  const black = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 90 });
+  const accent = new THREE.MeshPhongMaterial({ color: 0x00ffe0, shininess: 120, emissive: 0x003322, specular: 0x00ffe0 });
+  const orange = new THREE.MeshPhongMaterial({ color: 0xff6020, shininess: 80, emissive: 0x200800 });
+
+  // Sole (flat slab, curved)
+  const sole = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.04, 0.12),
+    black
+  );
+  sole.position.y = -0.07;
+  g.add(sole);
+
+  // Midsole foam (taller, cyan accent)
+  const midsole = new THREE.Mesh(
+    new THREE.BoxGeometry(0.30, 0.06, 0.11),
+    accent
+  );
+  midsole.position.y = -0.04;
+  g.add(midsole);
+
+  // Upper body
+  const upper = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.09, 0.10),
+    white
+  );
+  upper.position.set(0, 0.035, 0);
+  g.add(upper);
+
+  // Toe box (rounded front)
+  const toe = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 16, 10),
+    white
+  );
+  toe.scale.set(1, 0.65, 0.78);
+  toe.position.set(0.13, 0.02, 0);
+  g.add(toe);
+
+  // Heel counter
+  const heel = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 12, 8),
+    orange
+  );
+  heel.scale.set(0.7, 0.8, 0.85);
+  heel.position.set(-0.12, 0.02, 0);
+  g.add(heel);
+
+  // Tongue
+  const tongue = new THREE.Mesh(
+    new THREE.BoxGeometry(0.07, 0.10, 0.005),
+    white
+  );
+  tongue.position.set(0.02, 0.085, 0.052);
+  tongue.rotation.x = 0.3;
+  g.add(tongue);
+
+  // Laces (small cylinders)
+  for (let i = 0; i < 4; i++) {
+    const lace = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.003, 0.003, 0.08, 6),
+      new THREE.MeshPhongMaterial({ color: 0xdddddd })
+    );
+    lace.rotation.z = Math.PI / 2;
+    lace.position.set(0.01 + i * 0.02 - 0.03, 0.075 - i * 0.008, 0.048);
+    g.add(lace);
+  }
+
+  // Logo mark (glowing disc)
+  const logo = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.002, 16),
+    new THREE.MeshPhongMaterial({ color: 0x00ffe0, emissive: 0x00ffe0, emissiveIntensity: 0.8 })
+  );
+  logo.rotation.x = Math.PI / 2;
+  logo.position.set(-0.02, 0.036, 0.054);
+  g.add(logo);
+
+  return g;
+}
+
+/* ─ Spawn product over QR ─ */
+let spawnPct = 0;
+function spawnProduct() {
+  product3D.visible = true;
+
+  // Flash effect
+  const flash = document.createElement('div');
+  flash.className = 'spawn-flash';
+  document.getElementById('ar-screen').appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
+
+  // Grow in
+  spawnPct = 0;
+
+  // Position from current QR data
+  if (qrPos) {
+    applyQRTransform();
+  } else {
+    product3D.position.set(0, -0.08, -1.2);
+    product3D.scale.setScalar(0.38);
+  }
+
+  // Show annotations after spawn anim
+  setTimeout(showAnnotations, 900);
+}
+
+/* ─ Main AR render loop ─ */
+let trackFrame = 0;
+function arLoop() {
+  if (!arActive) return;
+  raf = requestAnimationFrame(arLoop);
+  T += 0.016; trackFrame++;
+
+  // Track QR every 8 frames
+  if (trackFrame % 8 === 0 && window.jsQR && arVidEl.readyState >= 2 && arVidEl.videoWidth) {
+    trackQR();
+  }
+
+  // Spawn grow-in animation
+  if (product3D.visible && spawnPct < 1) {
+    spawnPct = Math.min(1, spawnPct + 0.055);
+    const ease = 1 - Math.pow(1 - spawnPct, 3);
+    const targetS = qrPos ? computeScale() : 0.38;
+    product3D.scale.setScalar(targetS * ease);
+  }
+
+  // Hover + rotate
+  if (product3D.visible && spawnPct >= 0.98) {
+    product3D.rotation.y += 0.008;
+    product3D.position.y += (
+      (qrPos ? qrPos.wy : -0.08) + Math.sin(T * 1.4) * 0.012
+      - product3D.position.y
+    ) * 0.06;
+    if (qrPos) {
+      product3D.position.x += (qrPos.wx - product3D.position.x) * 0.08;
+      product3D.position.z += (qrPos.wz - product3D.position.z) * 0.06;
+    }
+  }
+
+  // Refresh annotation SVG lines
+  if (annotationsShown && trackFrame % 2 === 0) {
+    drawAnnotationLines();
+  }
+
+  renderer.render(scene, cam);
+}
+
+/* ─ QR continuous tracking ─ */
+function trackQR() {
+  trackCtx.drawImage(arVidEl, 0, 0, 640, 480);
+  const img  = trackCtx.getImageData(0, 0, 640, 480);
+  const code = jsQR(img.data, 640, 480, { inversionAttempts: 'dontInvert' });
+  if (code) {
+    qrPos = calcWorldPos(code.location);
+  }
+}
+
+function calcWorldPos(loc) {
+  const cx = ((loc.topLeftCorner.x + loc.bottomRightCorner.x) / 2) / 640;
+  const cy = ((loc.topLeftCorner.y + loc.bottomRightCorner.y) / 2) / 480;
+  const ndcX = (cx - 0.5) * 2;
+  const ndcY = -(cy - 0.5) * 2;
+  const sizeX = Math.abs(loc.bottomRightCorner.x - loc.topLeftCorner.x) / 640;
+  const sizeY = Math.abs(loc.bottomRightCorner.y - loc.topLeftCorner.y) / 480;
+  const ndcSize = (sizeX + sizeY) / 2;
+  const depth = THREE.MathUtils.clamp(0.18 / (ndcSize + 0.001), 0.3, 10);
+  const fov   = THREE.MathUtils.degToRad(cam.fov);
+  const scH   = 2 * Math.tan(fov / 2) * depth;
+  const scW   = scH * cam.aspect;
+  return {
+    wx: ndcX * scW / 2,
+    wy: ndcY * scH / 2 - 0.04,
+    wz: -depth + 0.1,
+    ndcSize, depth
+  };
+}
+
+function computeScale() {
+  if (!qrPos) return 0.38;
+  return THREE.MathUtils.clamp(qrPos.ndcSize * qrPos.depth * 1.15, 0.12, 1.4);
+}
+
+function applyQRTransform() {
+  if (!qrPos) return;
+  product3D.position.set(qrPos.wx, qrPos.wy, qrPos.wz);
+  product3D.scale.setScalar(computeScale());
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANNOTATION SYSTEM
+   SVG lines from object to floating panels
+═══════════════════════════════════════════════════════ */
+const ANNOTATIONS = [
+  { id: 'ann-name',  anchor: [-0.14, 0.08, 0], side: 'left'  },
+  { id: 'ann-price', anchor: [ 0.14, 0.10, 0], side: 'right' },
+  { id: 'ann-specs', anchor: [ 0.00,-0.07, 0], side: 'left'  },
+  { id: 'ann-tag',   anchor: [-0.04, 0.12, 0], side: 'right' },
+];
+
+// Panel positions relative to screen (set once, then SVG lines follow object)
+const PANEL_POSITIONS = {
+  'ann-name':  { right: 'auto', left: '4vw',  top: '22%',  bottom: 'auto' },
+  'ann-price': { right: '4vw',  left: 'auto', top: '22%',  bottom: 'auto' },
+  'ann-specs': { right: 'auto', left: '4vw',  top: '58%',  bottom: 'auto' },
+  'ann-tag':   { right: '4vw',  left: 'auto', top: '58%',  bottom: 'auto' },
+};
+
+function showAnnotations() {
+  annotationsShown = true;
+  for (const ann of ANNOTATIONS) {
+    const el = document.getElementById(ann.id);
+    const pos = PANEL_POSITIONS[ann.id];
+    Object.assign(el.style, pos);
+    el.classList.add('visible');
+  }
+  drawAnnotationLines();
+}
+
+// Project a 3D point on the object into screen px coords
+const _v = new THREE.Vector3();
+function projectPoint(localX, localY, localZ) {
+  _v.set(localX, localY, localZ);
+  _v.applyMatrix4(product3D.matrixWorld);
+  _v.project(cam);
+  return {
+    x: (_v.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-_v.y * 0.5 + 0.5) * window.innerHeight,
+  };
+}
+
+// Get center of a panel element
+function panelCenter(id) {
+  const el = document.getElementById(id);
+  const r  = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+// Get nearest edge point of a panel toward a target
+function panelEdge(id, targetX, targetY) {
+  const el = document.getElementById(id);
+  const r  = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top  + r.height / 2;
+  const dx = targetX - cx, dy = targetY - cy;
+  const len = Math.sqrt(dx*dx + dy*dy) || 1;
+  // Clamp to rectangle edge
+  const ex = Math.max(r.left, Math.min(r.right,  cx + dx / len * (r.width  / 2 + 4)));
+  const ey = Math.max(r.top,  Math.min(r.bottom, cy + dy / len * (r.height / 2 + 4)));
+  return { x: ex, y: ey };
+}
+
+function drawAnnotationLines() {
+  if (!product3D.visible || spawnPct < 0.5) return;
+  const svg = document.getElementById('annotations-svg');
+  svg.innerHTML = '';
+
+  for (const ann of ANNOTATIONS) {
+    const panelEl = document.getElementById(ann.id);
+    if (!panelEl.classList.contains('visible')) continue;
+
+    // 3D anchor point → screen
+    const [lx, ly, lz] = ann.anchor;
+    const objPt = projectPoint(lx, ly, lz);
+
+    // Panel edge toward object
+    const edge = panelEdge(ann.id, objPt.x, objPt.y);
+    const ctr  = panelCenter(ann.id);
+
+    // Midpoint with elbow
+    const elbX = ann.side === 'left'  ? (objPt.x + edge.x) / 2 - 20 : (objPt.x + edge.x) / 2 + 20;
+    const elbY = (objPt.y + edge.y) / 2;
+
+    const lineLen = Math.sqrt((edge.x-objPt.x)**2 + (edge.y-objPt.y)**2);
+
+    // Line: panel → elbow → object dot
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${edge.x},${edge.y} L${elbX},${elbY} L${objPt.x},${objPt.y}`);
+    path.setAttribute('stroke','rgba(0,255,224,0.55)');
+    path.setAttribute('stroke-width','1');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-dasharray', lineLen * 2);
+    path.setAttribute('stroke-dashoffset', '0');
+    svg.appendChild(path);
+
+    // Dot at object anchor
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', objPt.x); dot.setAttribute('cy', objPt.y);
+    dot.setAttribute('r','3'); dot.setAttribute('fill','#00ffe0');
+    dot.setAttribute('opacity','0.9');
+    svg.appendChild(dot);
+
+    // Small outer ring
+    const ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ring.setAttribute('cx', objPt.x); ring.setAttribute('cy', objPt.y);
+    ring.setAttribute('r','6'); ring.setAttribute('fill','none');
+    ring.setAttribute('stroke','rgba(0,255,224,0.35)');ring.setAttribute('stroke-width','1');
+    svg.appendChild(ring);
+
+    // Horizontal tick at panel edge
+    const tick = document.createElementNS('http://www.w3.org/2000/svg','line');
+    const tickW = ann.side === 'left' ? -10 : 10;
+    tick.setAttribute('x1', edge.x); tick.setAttribute('y1', edge.y);
+    tick.setAttribute('x2', edge.x + tickW); tick.setAttribute('y2', edge.y);
+    tick.setAttribute('stroke','rgba(0,255,224,0.7)'); tick.setAttribute('stroke-width','1.5');
+    svg.appendChild(tick);
+  }
+}
+
+/* ─ Stop AR ─ */
+function stopAR() {
+  arActive = false;
+  annotationsShown = false;
+  qrPos = null; spawnPct = 0;
+  if (raf) cancelAnimationFrame(raf);
+  if (renderer) { renderer.dispose(); renderer = null; }
+  product3D = null;
+  document.getElementById('annotations-svg').innerHTML = '';
+  document.querySelectorAll('.ann-panel').forEach(p => p.classList.remove('visible'));
+  window.removeEventListener('resize', onARResize);
+}
+
+function onARResize() {
+  if (!renderer || !cam) return;
+  cam.aspect = window.innerWidth / window.innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* ═══════════════════════════════════════════════════════
+   OPTIONAL: swap in a real .glb model
+   Uncomment and set GLB_URL to your hosted file.
+   The procedural shoe will be replaced automatically.
+
+const GLB_URL = 'https://your-host.com/shoe.glb';
+async function loadRealModel() {
+  await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js');
+  return new Promise((res,rej) => new THREE.GLTFLoader().load(GLB_URL, g => {
+    const obj = g.scene;
+    const box = new THREE.Box3().setFromObject(obj);
+    const s   = box.getSize(new THREE.Vector3());
+    obj.scale.setScalar(0.3 / Math.max(s.x,s.y,s.z));
+    res(obj);
+  }, undefined, rej));
+}
+// Then in initAR(), replace: product3D = buildProceduralProduct();
+// with:  product3D = await loadRealModel();
+═══════════════════════════════════════════════════════ */
+
+function loadScript(src) {
+  return new Promise(r => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = r; document.head.appendChild(s);
+  });
+}
+
+/* ─ BOOT ─ */
+window.addEventListener('DOMContentLoaded', initScan);
+</script>
+</body>
+</html>

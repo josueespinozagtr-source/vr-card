@@ -15,917 +15,744 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent}
 
-/* ══════════════════════════════
-   SCAN SCREEN
-══════════════════════════════ */
+/* ── SCAN SCREEN ── */
 #scan-screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
-
-.grid-lines{position:fixed;inset:0;pointer-events:none;
-  background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);
-  background-size:40px 40px}
-
-.scan-header{position:absolute;top:0;left:0;right:0;padding:1.3rem 1.5rem;
-  display:flex;align-items:center;justify-content:space-between;
-  background:linear-gradient(180deg,rgba(6,6,12,.95) 0%,transparent 100%);z-index:2}
-.brand{font-family:var(--display);font-size:1rem;font-weight:800;letter-spacing:.06em;color:var(--text)}
+.grid{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:40px 40px}
+.scan-hdr{position:absolute;top:0;left:0;right:0;padding:1.3rem 1.5rem;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,6,12,.95),transparent);z-index:2}
+.brand{font-family:var(--display);font-size:1rem;font-weight:800;letter-spacing:.06em}
 .brand em{font-style:normal;color:var(--accent)}
-.status-pill{display:flex;align-items:center;gap:.4rem;
-  background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);
-  border-radius:50px;padding:.26rem .8rem;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
-.pd{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pa 1.4s infinite}
+.spill{display:flex;align-items:center;gap:.4rem;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:50px;padding:.26rem .8rem;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.pd{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.4s infinite}
 
 /* Viewfinder */
-.vfw{position:relative;width:min(320px,82vw);aspect-ratio:1;margin-bottom:1.8rem}
-#scan-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px}
-#scan-hidden{display:none}
+.vfw{position:relative;width:min(300px,80vw);aspect-ratio:1;margin-bottom:1.8rem}
+#svid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;background:#000}
+#shid{display:none}
 .vf{position:absolute;inset:-2px;border-radius:15px;pointer-events:none;z-index:3}
-/* four corner brackets */
-.vf::before,.vf::after,.c-br,.c-bl{content:'';position:absolute;width:24px;height:24px;border-style:solid;border-color:var(--accent)}
-.vf::before{top:0;left:0;border-width:2.5px 0 0 2.5px;border-radius:5px 0 0 0}
-.vf::after{top:0;right:0;border-width:2.5px 2.5px 0 0;border-radius:0 5px 0 0}
-.c-br{bottom:0;right:0;border-width:0 2.5px 2.5px 0;border-radius:0 0 5px 0}
-.c-bl{bottom:0;left:0;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 5px}
-.sl{position:absolute;left:5%;right:5%;height:1.5px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);
-  animation:sla 2s ease-in-out infinite;z-index:4;opacity:.7}
+.vf::before,.vf::after,.cbr,.cbl{content:'';position:absolute;width:22px;height:22px;border-style:solid;border-color:var(--accent)}
+.vf::before{top:0;left:0;border-width:2.5px 0 0 2.5px;border-radius:4px 0 0 0}
+.vf::after{top:0;right:0;border-width:2.5px 2.5px 0 0;border-radius:0 4px 0 0}
+.cbr{bottom:0;right:0;border-width:0 2.5px 2.5px 0;border-radius:0 0 4px 0}
+.cbl{bottom:0;left:0;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 4px}
+.sl{position:absolute;left:5%;right:5%;height:1.5px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scan 2s ease-in-out infinite;z-index:4;opacity:.7}
+#qrbox{position:absolute;border:1.5px solid var(--accent);border-radius:4px;box-shadow:0 0 16px rgba(0,229,255,.4),inset 0 0 10px rgba(0,229,255,.05);pointer-events:none;z-index:5;opacity:0;transition:opacity .25s,left .08s,top .08s,width .08s,height .08s}
+#qrbox.on{opacity:1}
 
-/* QR lock highlight */
-#qr-box{position:absolute;border:1.5px solid var(--accent);border-radius:5px;
-  box-shadow:0 0 20px rgba(0,229,255,.4),inset 0 0 12px rgba(0,229,255,.05);
-  transition:left .1s,top .1s,width .1s,height .1s;pointer-events:none;z-index:5;opacity:0;
-  transition:opacity .25s,left .1s,top .1s,width .1s,height .1s}
-#qr-box.on{opacity:1}
-/* lock corner accents */
-#qr-box::before,#qr-box::after{content:'';position:absolute;width:10px;height:10px;border-color:var(--accent);border-style:solid}
-#qr-box::before{top:-2px;left:-2px;border-width:2px 0 0 2px}
-#qr-box::after{bottom:-2px;right:-2px;border-width:0 2px 2px 0}
+.hint{font-size:.7rem;line-height:1.8;color:var(--muted);text-align:center;max-width:260px}
+.hint strong{color:var(--text)}
 
-.scan-hint{font-size:.72rem;line-height:1.75;color:var(--muted);text-align:center;max-width:280px;letter-spacing:.02em}
-.scan-hint strong{color:var(--text)}
+#startbtn{position:absolute;bottom:2.2rem;left:50%;transform:translateX(-50%) scale(0);background:linear-gradient(135deg,var(--accent),#0099bb);color:#06060c;font-family:var(--display);font-size:1rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:50px;padding:.9rem 2.6rem;cursor:pointer;box-shadow:0 0 44px rgba(0,229,255,.4);transition:transform .5s cubic-bezier(.34,1.56,.64,1);z-index:20;white-space:nowrap}
+#startbtn.show{transform:translateX(-50%) scale(1)}
+#startbtn:active{filter:brightness(.88)}
+.blabel{position:absolute;bottom:.85rem;left:50%;transform:translateX(-50%);font-size:.54rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;opacity:0;transition:opacity .4s .5s;white-space:nowrap}
+.blabel.show{opacity:1}
 
-/* BEGIN */
-#begin-btn{position:absolute;bottom:2.2rem;left:50%;transform:translateX(-50%) scale(0);
-  background:linear-gradient(135deg,var(--accent),#009bb5);color:#06060c;
-  font-family:var(--display);font-size:1.05rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  border:none;border-radius:50px;padding:.95rem 2.8rem;cursor:pointer;
-  box-shadow:0 0 50px rgba(0,229,255,.45);
-  transition:transform .5s cubic-bezier(.34,1.56,.64,1);z-index:20;white-space:nowrap}
-#begin-btn.show{transform:translateX(-50%) scale(1)}
-#begin-btn:active{filter:brightness(.9)}
-.begin-label{position:absolute;bottom:.9rem;left:50%;transform:translateX(-50%);
-  font-size:.55rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;
-  opacity:0;transition:opacity .4s .5s;white-space:nowrap}
-.begin-label.show{opacity:1}
-
-/* ══════════════════════════════
-   AR SCREEN
-══════════════════════════════ */
+/* ── AR SCREEN ── */
 #ar-screen{position:fixed;inset:0;z-index:20;display:none;background:#000}
-#ar-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#ar-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#ann-svg{position:absolute;inset:0;width:100%;height:100%;z-index:25;pointer-events:none;overflow:visible}
+#avid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#acv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#asvg{position:absolute;inset:0;width:100%;height:100%;z-index:25;pointer-events:none;overflow:visible}
 
-/* HUD */
-.hud{position:absolute;top:0;left:0;right:0;z-index:30;padding:.9rem 1.3rem;
-  background:linear-gradient(180deg,rgba(0,0,0,.82) 0%,transparent 100%);
-  display:flex;align-items:center;gap:.7rem;pointer-events:none}
-.hud-title{font-family:var(--display);font-size:.92rem;font-weight:800;color:#fff;flex:1;letter-spacing:.04em}
-.hud-live{display:flex;align-items:center;gap:.32rem;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--accent);background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.22);
-  border-radius:50px;padding:.26rem .72rem}
-.hud-close{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.1);color:#fff;font-size:.88rem;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;pointer-events:auto;transition:background .2s}
-.hud-close:hover{background:rgba(255,255,255,.22)}
+.arhud{position:absolute;top:0;left:0;right:0;z-index:30;padding:.9rem 1.3rem;background:linear-gradient(180deg,rgba(0,0,0,.82),transparent);display:flex;align-items:center;gap:.7rem;pointer-events:none}
+.arhtitle{font-family:var(--display);font-size:.9rem;font-weight:800;color:#fff;flex:1;letter-spacing:.04em}
+.arlive{display:flex;align-items:center;gap:.3rem;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);border-radius:50px;padding:.25rem .7rem}
+.arxbtn{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;font-size:.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;pointer-events:auto;transition:background .2s}
+.arxbtn:hover{background:rgba(255,255,255,.22)}
 
-/* Anchor status */
-#anchor-status{position:absolute;top:4rem;left:50%;transform:translateX(-50%);z-index:30;
-  background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);
-  border-radius:50px;padding:.4rem 1.1rem;font-size:.6rem;letter-spacing:.1em;
-  color:rgba(255,255,255,.75);white-space:nowrap;transition:all .3s;display:flex;align-items:center;gap:.4rem}
-#anchor-status.locked{border-color:rgba(0,229,255,.35);color:var(--accent)}
+#astatus{position:absolute;top:3.8rem;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:50px;padding:.38rem 1rem;font-size:.58rem;letter-spacing:.1em;color:rgba(255,255,255,.7);white-space:nowrap;display:flex;align-items:center;gap:.4rem;transition:border-color .3s,color .3s}
+#astatus.locked{border-color:rgba(0,229,255,.35);color:var(--accent)}
 
 /* Annotation panels */
 .ann{position:absolute;z-index:26;pointer-events:none;opacity:0;transition:opacity .6s}
 .ann.on{opacity:1}
-.ann-tag{font-size:.56rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.15rem;display:flex;align-items:center;gap:.35rem}
-.ann-tag::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0}
-.ann-big{font-family:var(--display);font-size:.92rem;font-weight:800;color:var(--text);line-height:1.1;margin-bottom:.1rem}
-.ann-big.hi{color:var(--accent3)}
-.ann-small{font-size:.55rem;color:var(--muted);letter-spacing:.07em;line-height:1.7}
-.ann-rule{height:1.5px;background:linear-gradient(90deg,var(--accent),transparent);width:70px;margin:.35rem 0;border-radius:1px}
-.ann-rule.r{background:linear-gradient(270deg,var(--accent),transparent)}
+.atag{font-size:.54rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.15rem;display:flex;align-items:center;gap:.3rem}
+.atag::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0}
+.abig{font-family:var(--display);font-size:.9rem;font-weight:800;color:var(--text);line-height:1.1;margin-bottom:.1rem}
+.abig.gold{color:var(--accent3)}
+.asml{font-size:.52rem;color:var(--muted);letter-spacing:.07em;line-height:1.75}
+.abar{height:1.5px;width:65px;background:linear-gradient(90deg,var(--accent),transparent);margin:.3rem 0;border-radius:1px}
+.abar.r{background:linear-gradient(270deg,var(--accent),transparent)}
 
-/* Bottom strip */
-.ar-foot{position:absolute;bottom:0;left:0;right:0;z-index:30;
-  padding:1.2rem 1.4rem 1rem;
-  background:linear-gradient(0deg,rgba(0,0,0,.9) 0%,transparent 100%);
-  display:flex;align-items:flex-end;gap:.9rem}
-.af-main{flex:1}
-.af-eyebrow{font-size:.52rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:.25rem}
-.af-name{font-family:var(--display);font-size:1.25rem;font-weight:800;line-height:1;color:var(--text)}
-.af-sub{font-size:.58rem;color:var(--accent);letter-spacing:.12em;margin-top:.2rem}
-.af-price{font-family:var(--display);font-size:1.5rem;font-weight:800;color:var(--accent3);text-align:right}
-.af-price sup{font-size:.75rem}
-.af-divider{width:1px;height:44px;background:var(--border)}
+.arfoot{position:absolute;bottom:0;left:0;right:0;z-index:30;padding:1.1rem 1.3rem .9rem;background:linear-gradient(0deg,rgba(0,0,0,.9),transparent);display:flex;align-items:flex-end;gap:.8rem}
+.afm{flex:1}
+.afsup{font-size:.5rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:.2rem}
+.afname{font-family:var(--display);font-size:1.2rem;font-weight:800;line-height:1;color:var(--text)}
+.afsub{font-size:.56rem;color:var(--accent);letter-spacing:.12em;margin-top:.18rem}
+.afprice{font-family:var(--display);font-size:1.4rem;font-weight:800;color:var(--accent3);text-align:right}
+.afdiv{width:1px;height:40px;background:var(--border)}
 
-/* Spawn flash */
-.s-flash{position:absolute;inset:0;background:rgba(0,229,255,.08);pointer-events:none;z-index:28;opacity:0;animation:sflash .7s ease-out forwards}
+.sflash{position:absolute;inset:0;background:rgba(0,229,255,.08);pointer-events:none;z-index:28;animation:flash .7s ease-out forwards}
 
-/* Animations */
-@keyframes pa{0%,100%{opacity:1}50%{opacity:.2}}
-@keyframes sla{0%{top:3%}50%{top:95%}100%{top:3%}}
-@keyframes sflash{0%{opacity:.6}100%{opacity:0}}
-@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes scan{0%{top:3%}50%{top:95%}100%{top:3%}}
+@keyframes flash{0%{opacity:.6}100%{opacity:0}}
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════
-     SCAN SCREEN
-══════════════════════════════ -->
+<!-- SCAN SCREEN -->
 <div id="scan-screen">
-  <div class="grid-lines"></div>
-
-  <div class="scan-header">
+  <div class="grid"></div>
+  <div class="scan-hdr">
     <span class="brand">AR<em>CITY</em></span>
-    <div class="status-pill"><span class="pd"></span><span id="scan-txt">SCANNING</span></div>
+    <div class="spill"><span class="pd"></span><span id="stxt">SCANNING</span></div>
   </div>
-
   <div class="vfw">
-    <video id="scan-video" autoplay playsinline muted></video>
-    <canvas id="scan-hidden"></canvas>
-    <div class="vf">
-      <div class="c-br"></div><div class="c-bl"></div>
-      <div class="sl"></div>
-    </div>
-    <div id="qr-box"></div>
+    <video id="svid" autoplay playsinline muted></video>
+    <canvas id="shid"></canvas>
+    <div class="vf"><div class="cbr"></div><div class="cbl"></div><div class="sl"></div></div>
+    <div id="qrbox"></div>
   </div>
-
-  <p class="scan-hint"><strong>Point at any QR code</strong><br/>The city will be anchored<br/>flat on the marker surface</p>
-
-  <button id="begin-btn" onclick="launchAR()">LAUNCH AR <span style="font-size:.9rem">↗</span></button>
-  <div class="begin-label" id="begin-label">QR LOCKED · TAP TO LAUNCH</div>
+  <p class="hint"><strong>Point at any QR code</strong><br/>City rises from the marker surface</p>
+  <button id="startbtn" onclick="launchAR()">LAUNCH AR ↗</button>
+  <div class="blabel" id="blabel">QR LOCKED · TAP TO LAUNCH</div>
 </div>
 
-<!-- ══════════════════════════════
-     AR SCREEN
-══════════════════════════════ -->
+<!-- AR SCREEN -->
 <div id="ar-screen">
-  <video id="ar-video" autoplay playsinline muted></video>
-  <canvas id="ar-canvas"></canvas>
-  <svg id="ann-svg"></svg>
+  <video id="avid" autoplay playsinline muted></video>
+  <canvas id="acv"></canvas>
+  <svg id="asvg"></svg>
 
-  <!-- Annotation panels -->
   <div class="ann" id="ann-a">
-    <div class="ann-tag">Development</div>
-    <div class="ann-big">NOVA TOWER</div>
-    <div class="ann-small">Mixed Use · 62 Floors</div>
-    <div class="ann-rule"></div>
-    <div class="ann-small">HEIGHT · 312 m<br/>GFA · 184,000 m²<br/>STATUS · UNDER CONST.</div>
+    <div class="atag">Development</div>
+    <div class="abig">NOVA TOWER</div>
+    <div class="asml">Mixed Use · 62 Floors</div>
+    <div class="abar"></div>
+    <div class="asml">HEIGHT · 312 m<br/>GFA · 184,000 m²<br/>STATUS · UNDER CONST.</div>
   </div>
-
   <div class="ann" id="ann-b">
-    <div class="ann-tag" style="justify-content:flex-end">Valuation</div>
-    <div class="ann-big hi" style="text-align:right">$2.4B</div>
-    <div class="ann-small" style="text-align:right">Projected Value 2027</div>
-    <div class="ann-rule r" style="margin-left:auto"></div>
-    <div class="ann-small" style="text-align:right">YIELD · 6.8% p.a.<br/>ROI · 18 MONTHS<br/>UNITS · 480 RESI</div>
+    <div class="atag" style="justify-content:flex-end">Valuation</div>
+    <div class="abig gold" style="text-align:right">$2.4B</div>
+    <div class="asml" style="text-align:right">Projected 2027</div>
+    <div class="abar r" style="margin-left:auto"></div>
+    <div class="asml" style="text-align:right">YIELD · 6.8% p.a.<br/>UNITS · 480 RESI<br/>RATING · AA+</div>
   </div>
-
   <div class="ann" id="ann-c">
-    <div class="ann-tag">Infrastructure</div>
-    <div class="ann-big" style="font-size:.78rem;line-height:1.4">District Grid<br/>Node A-7</div>
-    <div class="ann-rule"></div>
-    <div class="ann-small">ROADS · 4-LANE ARTERIAL<br/>METRO · 200m EAST<br/>FIBER · GIGABIT</div>
+    <div class="atag">Infrastructure</div>
+    <div class="abig" style="font-size:.78rem;line-height:1.3">District<br/>Node A-7</div>
+    <div class="abar"></div>
+    <div class="asml">ROADS · 4-LANE<br/>METRO · 200m<br/>FIBER · GIGABIT</div>
   </div>
-
   <div class="ann" id="ann-d">
-    <div style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);border-radius:6px;padding:.4rem .65rem;display:inline-block">
-      <div style="font-size:.52rem;letter-spacing:.14em;color:var(--accent4)">SMART CITY CERTIFIED</div>
-      <div style="font-family:var(--display);font-size:.78rem;font-weight:800;color:var(--text);margin-top:.1rem">ISO 37122 · 2024</div>
+    <div style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.28);border-radius:5px;padding:.38rem .6rem;display:inline-block">
+      <div style="font-size:.5rem;letter-spacing:.14em;color:var(--accent4)">SMART CITY</div>
+      <div style="font-family:var(--display);font-size:.75rem;font-weight:800;color:var(--text);margin-top:.1rem">ISO 37122</div>
     </div>
   </div>
 
-  <div class="hud">
-    <span class="hud-title">AR CITY VIEWER</span>
-    <div class="hud-live"><span class="pd"></span>LIVE AR</div>
-    <button class="hud-close" onclick="closeAR()">✕</button>
+  <div class="arhud">
+    <span class="arhtitle">AR CITY VIEWER</span>
+    <div class="arlive"><span class="pd"></span>LIVE</div>
+    <button class="arxbtn" onclick="closeAR()">✕</button>
   </div>
+  <div id="astatus"><span>⟳</span><span id="atxt">Looking for QR…</span></div>
 
-  <div id="anchor-status"><span>⟳</span><span id="anchor-txt">Searching for QR…</span></div>
-
-  <div class="ar-foot">
-    <div class="af-main">
-      <div class="af-eyebrow">AR / 2024 / MASTERPLAN</div>
-      <div class="af-name">Nova District</div>
-      <div class="af-sub">COORD · 40.7128° N · 74.0060° W</div>
+  <div class="arfoot">
+    <div class="afm">
+      <div class="afsup">AR / 2024 / MASTERPLAN</div>
+      <div class="afname">Nova District</div>
+      <div class="afsub">40.7128°N · 74.0060°W</div>
     </div>
-    <div class="af-divider"></div>
-    <div class="af-price"><sup>$</sup>2.4<span style="font-size:.75rem">B</span></div>
+    <div class="afdiv"></div>
+    <div class="afprice">$2.4<span style="font-size:.7rem">B</span></div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-/* ══════════════════════════════════════════════════
-   CONFIG — edit your project details here
-══════════════════════════════════════════════════ */
-const PROJECT = {
-  name:     'Nova Tower',
-  district: 'Nova District',
-  height:   '312 m',
-  floors:   '62',
-  gfa:      '184,000 m²',
-  value:    '$2.4B',
-  yield:    '6.8% p.a.',
-  coord:    '40.7128°N 74.0060°W',
-  status:   'Under Construction',
-};
+/* =====================================================
+   ALL STATE — single block, no duplicates
+===================================================== */
+// Scan state
+let scanStream = null;
+let scanIv     = null;
+let qrLocked   = false;
+let jsqrReady  = false;
 
-// Swap this URL for a hosted .glb of your building/city:
-// const MODEL_URL = 'https://yourhost.com/city.glb';
-const MODEL_URL = null; // null = use procedural city
+// AR state
+let arActive   = false;
+let renderer   = null;
+let scene      = null;
+let cam        = null;
+let raf        = null;
+let city       = null;     // THREE.Group — the city
+let anchor     = null;     // THREE.Object3D — sits on QR plane
+let tCv        = null;     // tracking canvas
+let tCx        = null;
+let frameN     = 0;
+let spawnPct   = 0;
+let annShown   = false;
+let staleness  = 0;
+const MAX_STALE = 40;
+let T          = 0;
 
-/* ══════════════════════════════════════════════════
-   SCAN SCREEN
-══════════════════════════════════════════════════ */
-let scanStream = null, scanIv = null, qrLocked = false;
-const sVid = document.getElementById('scan-video');
-const sCv  = document.getElementById('scan-hidden');
-let sCx;
+// DOM refs — grabbed once
+const sVid = document.getElementById('svid');
+const sHid = document.getElementById('shid');
+const aVid = document.getElementById('avid');
+const aCv  = document.getElementById('acv');
 
-async function initScan() {
+/* =====================================================
+   BOOT — start camera immediately on page load
+===================================================== */
+window.addEventListener('DOMContentLoaded', boot);
+
+async function boot() {
+  // Load jsQR first, camera second — both in parallel
+  const jsqrProm = new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    s.onload  = () => { jsqrReady = true; resolve(); };
+    s.onerror = () => resolve(); // fail gracefully
+    document.head.appendChild(s);
+  });
+
+  // Request camera
   try {
     scanStream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }, audio:false });
-    sVid.srcObject = scanStream;
-    await new Promise(r => sVid.onloadedmetadata = r);
-    sVid.play();
-    sCv.width = 640; sCv.height = 480;
-    sCx = sCv.getContext('2d',{willReadFrequently:true});
-  } catch(e){ document.getElementById('scan-txt').textContent='NO CAMERA'; return; }
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch (e) {
+    // Fallback: try without facingMode constraint (desktop browsers)
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (e2) {
+      document.getElementById('stxt').textContent = 'CAM DENIED';
+      showCamError(e2.message);
+      return;
+    }
+  }
 
-  if (!window.jsQR) {
-    const s = document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
-    s.onload = () => { scanIv = setInterval(scanTick, 180); };
-    document.head.appendChild(s);
-  } else { scanIv = setInterval(scanTick, 180); }
+  // Wire up scan viewfinder
+  sVid.srcObject = scanStream;
+  sVid.onloadedmetadata = () => sVid.play();
+
+  // Size the scan canvas
+  sHid.width  = 640;
+  sHid.height = 480;
+  const sCx = sHid.getContext('2d', { willReadFrequently: true });
+
+  // Wait for jsQR then start scanning
+  await jsqrProm;
+  scanIv = setInterval(() => scanTick(sCx), 200);
 }
 
-function scanTick(){
-  if (!sVid.readyState || sVid.readyState < 2 || !sVid.videoWidth) return;
-  sCx.drawImage(sVid, 0,0, 640,480);
-  const id = sCx.getImageData(0,0,640,480);
-  const qr = jsQR(id.data,640,480,{inversionAttempts:'dontInvert'});
-  if (qr){
-    if(!qrLocked){ qrLocked=true; onQRLock(); }
-    positionLockBox(qr.location);
-    lastScanLoc = qr.location;
+function showCamError(msg) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,48,96,.15);border:1px solid rgba(255,48,96,.4);border-radius:12px;padding:1.2rem 1.6rem;text-align:center;font-size:.72rem;line-height:1.7;color:#ff8aa8;max-width:260px;z-index:100';
+  d.innerHTML = `<div style="font-size:1.4rem;margin-bottom:.5rem">📷</div><strong>Camera required</strong><br/>${msg}<br/><br/>Try opening this page via HTTPS or a local server.`;
+  document.getElementById('scan-screen').appendChild(d);
+}
+
+/* =====================================================
+   SCAN TICK
+===================================================== */
+function scanTick(ctx) {
+  if (!jsqrReady || sVid.readyState < 2 || !sVid.videoWidth) return;
+  ctx.drawImage(sVid, 0, 0, 640, 480);
+  const imgData = ctx.getImageData(0, 0, 640, 480);
+  const code    = jsQR(imgData.data, 640, 480, { inversionAttempts: 'dontInvert' });
+
+  if (code) {
+    if (!qrLocked) {
+      qrLocked = true;
+      document.getElementById('stxt').textContent = 'LOCKED';
+      document.getElementById('startbtn').classList.add('show');
+      document.getElementById('blabel').classList.add('show');
+    }
+    updateLockBox(code.location);
   }
 }
-let lastScanLoc = null;
 
-function onQRLock(){
-  document.getElementById('scan-txt').textContent='LOCKED';
-  document.getElementById('begin-btn').classList.add('show');
-  document.getElementById('begin-label').classList.add('show');
-  document.getElementById('qr-box').classList.add('on');
-}
-
-function positionLockBox(loc){
+function updateLockBox(loc) {
   const wrap = document.querySelector('.vfw');
-  const wr = wrap.getBoundingClientRect();
-  const xs=[loc.topLeftCorner.x,loc.topRightCorner.x,loc.bottomRightCorner.x,loc.bottomLeftCorner.x];
-  const ys=[loc.topLeftCorner.y,loc.topRightCorner.y,loc.bottomRightCorner.y,loc.bottomLeftCorner.y];
-  const pad=10;
-  const x0=(Math.min(...xs)/640)*wr.width-pad, y0=(Math.min(...ys)/480)*wr.height-pad;
-  const w=(Math.max(...xs)/640)*wr.width-x0+pad*2, h=(Math.max(...ys)/480)*wr.height-y0+pad*2;
-  const el=document.getElementById('qr-box');
-  el.style.cssText=`left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;opacity:1`;
+  const wr   = wrap.getBoundingClientRect();
+  const xs   = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
+  const ys   = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
+  const pad  = 10;
+  const x0   = (Math.min(...xs) / 640) * wr.width  - pad;
+  const y0   = (Math.min(...ys) / 480) * wr.height - pad;
+  const w    = (Math.max(...xs) / 640) * wr.width  - x0 + pad * 2;
+  const h    = (Math.max(...ys) / 480) * wr.height - y0 + pad * 2;
+  const el   = document.getElementById('qrbox');
+  el.classList.add('on');
+  el.style.left   = x0 + 'px';
+  el.style.top    = y0 + 'px';
+  el.style.width  = w  + 'px';
+  el.style.height = h  + 'px';
 }
 
-/* ══════════════════════════════════════════════════
+/* =====================================================
    LAUNCH AR
-══════════════════════════════════════════════════ */
-function launchAR(){
+===================================================== */
+function launchAR() {
   clearInterval(scanIv);
-  document.getElementById('scan-screen').style.display='none';
-  document.getElementById('ar-screen').style.display='block';
-  const av=document.getElementById('ar-video');
-  av.srcObject=scanStream; av.play();
+  document.getElementById('scan-screen').style.display = 'none';
+  document.getElementById('ar-screen').style.display   = 'block';
+
+  // Reuse the same camera stream — no second permission prompt
+  aVid.srcObject = scanStream;
+  aVid.onloadedmetadata = () => aVid.play();
+
   initAR();
 }
-function closeAR(){
-  stopAR();
-  document.getElementById('ar-screen').style.display='none';
-  document.getElementById('scan-screen').style.display='flex';
-  qrLocked=false; lastScanLoc=null;
-  document.getElementById('begin-btn').classList.remove('show');
-  document.getElementById('begin-label').classList.remove('show');
-  document.getElementById('qr-box').classList.remove('on');
-  document.getElementById('scan-txt').textContent='SCANNING';
-  if(window.jsQR) scanIv=setInterval(scanTick,180);
+
+function closeAR() {
+  teardownAR();
+  document.getElementById('ar-screen').style.display   = 'none';
+  document.getElementById('scan-screen').style.display = 'flex';
+
+  // Reset scan state
+  qrLocked = false;
+  document.getElementById('startbtn').classList.remove('show');
+  document.getElementById('blabel').classList.remove('show');
+  document.getElementById('qrbox').classList.remove('on');
+  document.getElementById('stxt').textContent = 'SCANNING';
+
+  // Restart scan interval
+  const sCx = sHid.getContext('2d', { willReadFrequently: true });
+  scanIv = setInterval(() => scanTick(sCx), 200);
 }
 
-/* ══════════════════════════════════════════════════
-   AR ENGINE
-══════════════════════════════════════════════════ */
-let arActive=false, renderer, scene, cam, raf;
-let city=null;
-const arVid=document.getElementById('ar-video'), arCv=document.getElementById('ar-canvas');
-let tCv, tCx, frameN=0;
+/* =====================================================
+   AR INIT
+===================================================== */
+function initAR() {
+  arActive  = true;
+  frameN    = 0;
+  spawnPct  = 0;
+  annShown  = false;
+  staleness = 0;
+  T         = 0;
 
-// Anchor transform — computed from QR corners every frame
-// Stored as a THREE.Matrix4 for the city group
-const anchorMatrix = new THREE.Matrix4();
-let anchorValid = false;
-let lastValidMatrix = new THREE.Matrix4();
-let matLerpAlpha = 0; // 0..1, for smooth lock-on
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ canvas: aCv, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 
-// How many frames we keep the last valid position before fading
-let staleness = 0;
-const MAX_STALE = 45;
-
-// Spawn state
-let spawnPct = 0;
-let annoVisible = false;
-
-function initAR(){
-  arActive=true;
-
-  renderer=new THREE.WebGLRenderer({canvas:arCv,alpha:true,antialias:true});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  renderer.setSize(window.innerWidth,window.innerHeight);
-  renderer.setClearColor(0x000000,0);
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-
-  scene=new THREE.Scene();
-  cam=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.001,1000);
-  cam.position.set(0,0,0);
+  // Scene + camera
+  scene = new THREE.Scene();
+  cam   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.001, 1000);
 
   // Lighting
-  const ambient=new THREE.AmbientLight(0xffffff,0.45); scene.add(ambient);
-  const sun=new THREE.DirectionalLight(0xfff0cc,1.0);
-  sun.position.set(5,10,8); sun.castShadow=true;
-  sun.shadow.mapSize.width=2048; sun.shadow.mapSize.height=2048;
-  sun.shadow.camera.near=0.01; sun.shadow.camera.far=50;
-  sun.shadow.camera.left=sun.shadow.camera.bottom=-3;
-  sun.shadow.camera.right=sun.shadow.camera.top=3;
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff8e0, 0.95);
+  sun.position.set(5, 10, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.setScalar(2048);
+  sun.shadow.camera.near   = 0.01;
+  sun.shadow.camera.far    = 50;
+  sun.shadow.camera.left   = sun.shadow.camera.bottom = -3;
+  sun.shadow.camera.right  = sun.shadow.camera.top    =  3;
   scene.add(sun);
-  const fill=new THREE.DirectionalLight(0xaaccff,0.4);
-  fill.position.set(-6,4,-4); scene.add(fill);
-  const rim=new THREE.DirectionalLight(0x00e5ff,0.3);
-  rim.position.set(0,8,-10); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xaaccff, 0.35);
+  fill.position.set(-6, 4, -4);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x00e5ff, 0.2);
+  rim.position.set(0, 8, -10);
+  scene.add(rim);
 
-  // City group — this is what gets anchored to the QR plane
+  // Anchor object — this gets transformed to match the QR plane
+  anchor = new THREE.Object3D();
+  scene.add(anchor);
+
+  // City group — child of anchor, so it inherits QR-plane transform
   city = new THREE.Group();
-  city.visible=false;
-  city.scale.setScalar(0.001);
-  scene.add(city);
+  anchor.add(city);
+  city.visible = false;
 
   buildCity(city);
 
-  tCv=document.createElement('canvas'); tCv.width=640; tCv.height=480;
-  tCx=tCv.getContext('2d',{willReadFrequently:true});
+  // Tracking canvas
+  tCv = document.createElement('canvas');
+  tCv.width  = 640;
+  tCv.height = 480;
+  tCx = tCv.getContext('2d', { willReadFrequently: true });
 
-  window.addEventListener('resize',onResize);
+  window.addEventListener('resize', onResize);
   arLoop();
 
-  // Spawn after brief intro
-  setTimeout(()=>{ city.visible=true; doSpawn(); },600);
+  // Spawn city shortly after
+  setTimeout(spawnCity, 700);
 }
 
-/* ══════════════════════════════════════════════════
-   PROCEDURAL CITY — a tight urban block
-══════════════════════════════════════════════════ */
-function buildCity(root){
-  const W = 1.0; // city footprint in world units — matches QR size at ~arm's length
+/* =====================================================
+   CITY BUILDER
+===================================================== */
+function buildCity(root) {
+  const mGlass = new THREE.MeshPhongMaterial({ color:0x88ccdd, emissive:0x002233, shininess:130, specular:0x88ccdd, transparent:true, opacity:.92 });
+  const mConc  = new THREE.MeshPhongMaterial({ color:0xaaaacc, emissive:0x050510, shininess:18 });
+  const mDark  = new THREE.MeshPhongMaterial({ color:0x1e2f44, emissive:0x050510, shininess:55 });
+  const mAccent= new THREE.MeshPhongMaterial({ color:0x00e5ff, emissive:0x004455, shininess:150, specular:0x00e5ff });
+  const mGold  = new THREE.MeshPhongMaterial({ color:0xffdd00, emissive:0x332200, shininess:90 });
+  const mRoad  = new THREE.MeshPhongMaterial({ color:0x181822, shininess:4 });
+  const mGnd   = new THREE.MeshPhongMaterial({ color:0x111118, shininess:2 });
+  const mWin   = new THREE.MeshPhongMaterial({ color:0x1a3355, emissive:0x0a1a2a, shininess:70, transparent:true, opacity:.82 });
+  const mNeon  = c => new THREE.MeshPhongMaterial({ color:c, emissive:c, emissiveIntensity:1.3 });
+  const mTree  = new THREE.MeshPhongMaterial({ color:0x1a4422, emissive:0x060f08 });
 
-  // Materials
-  const matGlass    = new THREE.MeshPhongMaterial({color:0x88ccdd,emissive:0x002233,shininess:140,specular:0x88ccdd,transparent:true,opacity:.9});
-  const matConcrete = new THREE.MeshPhongMaterial({color:0xaaaacc,emissive:0x050510,shininess:20});
-  const matDark     = new THREE.MeshPhongMaterial({color:0x223344,emissive:0x050510,shininess:60});
-  const matAccent   = new THREE.MeshPhongMaterial({color:0x00e5ff,emissive:0x004455,shininess:150,specular:0x00e5ff});
-  const matGold     = new THREE.MeshPhongMaterial({color:0xffdd00,emissive:0x332200,shininess:100});
-  const matRoad     = new THREE.MeshPhongMaterial({color:0x1a1a2a,shininess:5});
-  const matGround   = new THREE.MeshPhongMaterial({color:0x14141e,shininess:3});
-  const matWindow   = new THREE.MeshPhongMaterial({color:0x224466,emissive:0x112233,shininess:80,transparent:true,opacity:.85});
-  const matNeon     = (c)=>new THREE.MeshPhongMaterial({color:c,emissive:c,emissiveIntensity:1.2,shininess:200});
+  // Ground
+  const gnd = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mGnd);
+  gnd.rotation.x = -Math.PI / 2;
+  gnd.receiveShadow = true;
+  root.add(gnd);
 
-  // Ground plane — same footprint as QR
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(W,W), matGround);
-  ground.rotation.x=-Math.PI/2;
-  ground.receiveShadow=true;
-  root.add(ground);
+  // Roads
+  [[1,0.04],[0.04,1]].forEach(([w,d]) => {
+    const r = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mRoad);
+    r.rotation.x = -Math.PI / 2; r.position.y = 0.0005;
+    root.add(r);
+  });
 
-  // Road grid
-  const roadH = new THREE.Mesh(new THREE.PlaneGeometry(W,.04), matRoad);
-  roadH.rotation.x=-Math.PI/2; roadH.position.y=.001;
-  root.add(roadH);
-  const roadV = new THREE.Mesh(new THREE.PlaneGeometry(.04,W), matRoad);
-  roadV.rotation.x=-Math.PI/2; roadV.position.y=.001;
-  root.add(roadV);
-
-  // Buildings — defined as {x, z, w, d, h, mat, style}
-  const buildings = [
-    // Hero tower — tallest, centre-left
-    {x:-.18, z:-.12, w:.16, d:.16, h:.72, mat:matGlass,  style:'tower'},
-    // Second tower
-    {x: .15, z:-.14, w:.13, d:.13, h:.55, mat:matDark,   style:'tower'},
-    // Mid-rise block left
-    {x:-.32, z: .05, w:.12, d:.18, h:.32, mat:matConcrete,style:'block'},
-    // Mid-rise block right
-    {x: .28, z: .08, w:.14, d:.12, h:.28, mat:matDark,   style:'block'},
-    // Podium block
-    {x:-.05, z: .18, w:.28, d:.10, h:.14, mat:matConcrete,style:'podium'},
-    // Small blocks
-    {x:-.38, z:-.22, w:.09, d:.09, h:.18, mat:matDark,   style:'block'},
-    {x: .35, z:-.25, w:.08, d:.10, h:.22, mat:matConcrete,style:'block'},
-    {x: .05, z:-.32, w:.11, d:.09, h:.16, mat:matDark,   style:'block'},
-    {x:-.22, z: .28, w:.10, d:.08, h:.12, mat:matConcrete,style:'block'},
-    {x: .32, z: .30, w:.09, d:.09, h:.09, mat:matConcrete,style:'block'},
+  // Buildings: [cx, cz, w, d, h, mat, style]
+  const bldgs = [
+    [-0.18, -0.12, .155, .155, .75, mGlass,  'tower'],
+    [ 0.16, -0.13, .130, .130, .58, mDark,   'tower'],
+    [-0.32,  0.06, .115, .18,  .30, mConc,   'block'],
+    [ 0.29,  0.09, .135, .115, .26, mDark,   'block'],
+    [-0.05,  0.20, .275, .095, .13, mConc,   'podium'],
+    [-0.38, -0.22, .090, .090, .19, mDark,   'block'],
+    [ 0.36, -0.24, .080, .100, .22, mConc,   'block'],
+    [ 0.06, -0.33, .105, .085, .16, mDark,   'block'],
+    [-0.23,  0.29, .095, .075, .11, mConc,   'block'],
+    [ 0.33,  0.31, .085, .085, .08, mConc,   'block'],
   ];
 
-  buildings.forEach(b=>{
-    const g=new THREE.Group();
-    g.position.set(b.x,0,b.z);
+  bldgs.forEach(([bx, bz, bw, bd, bh, mat, style]) => {
+    const g = new THREE.Group();
+    g.position.set(bx, 0, bz);
 
-    // Main body
-    const body=new THREE.Mesh(new THREE.BoxGeometry(b.w,b.h,b.d), b.mat.clone());
-    body.position.y=b.h/2;
-    body.castShadow=true; body.receiveShadow=true;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mat.clone());
+    body.position.y = bh / 2;
+    body.castShadow  = true;
+    body.receiveShadow = true;
     g.add(body);
 
-    if(b.style==='tower'){
+    if (style === 'tower') {
       // Spire
-      const spire=new THREE.Mesh(new THREE.ConeGeometry(b.w*.07,b.h*.22,8), matAccent);
-      spire.position.y=b.h+b.h*.11;
-      spire.castShadow=true;
-      g.add(spire);
+      const sp = new THREE.Mesh(new THREE.ConeGeometry(bw * .07, bh * .22, 8), mAccent.clone());
+      sp.position.y = bh + bh * .11; sp.castShadow = true; g.add(sp);
 
-      // Window rows (instanced as thin quads)
-      const wRows = Math.floor(b.h*18);
-      for(let r=1;r<wRows;r++){
-        const y=r*(b.h/wRows);
-        [-1,1].forEach(side=>{
-          const wMesh=new THREE.Mesh(new THREE.PlaneGeometry(b.w*.7,.008), matWindow);
-          wMesh.position.set(side===1?b.w/2+.001:-(b.w/2+.001),y,0);
-          wMesh.rotation.y=side===1?0:Math.PI;
-          g.add(wMesh);
+      // Window rows
+      const rows = Math.floor(bh * 16);
+      for (let r = 1; r < rows; r++) {
+        const y = r * (bh / rows);
+        [-1, 1].forEach(side => {
+          const wm = new THREE.Mesh(new THREE.PlaneGeometry(bw * .72, .007), mWin.clone());
+          wm.position.set(side * (bw / 2 + .0005), y, 0);
+          wm.rotation.y = side === 1 ? 0 : Math.PI;
+          g.add(wm);
         });
       }
+      // Roof ring
+      const rng = new THREE.Mesh(new THREE.TorusGeometry(bw * .38, .007, 6, 20), mAccent.clone());
+      rng.rotation.x = Math.PI / 2; rng.position.y = bh - .003; g.add(rng);
+      // Beacon
+      const bc = new THREE.Mesh(new THREE.SphereGeometry(.006, 8, 8), mNeon(0x00e5ff));
+      bc.position.y = bh + bh * .22; g.add(bc);
 
-      // Roof accent ring
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(b.w*.38,.008,6,20), matAccent);
-      ring.rotation.x=Math.PI/2; ring.position.y=b.h-.005;
-      g.add(ring);
-
-      // Glowing top beacon
-      const beacon=new THREE.Mesh(new THREE.SphereGeometry(.006,8,8), matNeon(0x00e5ff));
-      beacon.position.y=b.h+b.h*.22;
-      g.add(beacon);
-
-    } else if(b.style==='block'){
-      // Rooftop detail
-      const roof=new THREE.Mesh(new THREE.BoxGeometry(b.w*.6,.015,b.d*.6), matConcrete);
-      roof.position.y=b.h+.007; g.add(roof);
-      // AC units
-      for(let i=0;i<2;i++){
-        const ac=new THREE.Mesh(new THREE.BoxGeometry(.018,.012,.022), matDark);
-        ac.position.set((i-.5)*.04,b.h+.016,0); g.add(ac);
+    } else if (style === 'block') {
+      const rf = new THREE.Mesh(new THREE.BoxGeometry(bw * .6, .013, bd * .6), mConc.clone());
+      rf.position.y = bh + .006; g.add(rf);
+      for (let i = 0; i < 2; i++) {
+        const ac = new THREE.Mesh(new THREE.BoxGeometry(.016, .011, .020), mDark.clone());
+        ac.position.set((i - .5) * .038, bh + .015, 0); g.add(ac);
       }
 
-    } else if(b.style==='podium'){
-      // Stepped roof
-      const step=new THREE.Mesh(new THREE.BoxGeometry(b.w*.7,b.h*.25,b.d*.7), matConcrete);
-      step.position.y=b.h+b.h*.125; g.add(step);
+    } else if (style === 'podium') {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(bw * .65, bh * .28, bd * .65), mConc.clone());
+      st.position.y = bh + bh * .14; g.add(st);
     }
 
     root.add(g);
   });
 
-  // Elevated walkway bridge
-  const bridge=new THREE.Mesh(new THREE.BoxGeometry(.35,.012,.025), matDark);
-  bridge.position.set(-.015,.22,-.13); root.add(bridge);
+  // Elevated bridge
+  const br = new THREE.Mesh(new THREE.BoxGeometry(.32, .011, .022), mDark.clone());
+  br.position.set(-.02, .21, -.13); root.add(br);
 
-  // Street lights
-  [[-0.22,.03],[.22,.03],[-0.22,-.03],[.22,-.03]].forEach(([x,z])=>{
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.08,6), matConcrete);
-    pole.position.set(x,.04,z); root.add(pole);
-    const lamp=new THREE.Mesh(new THREE.SphereGeometry(.005,6,6), matNeon(0xffffaa));
-    lamp.position.set(x,.082,z); root.add(lamp);
+  // Street lamps
+  [[-0.22, .025], [.22, .025], [-0.22, -.025], [.22, -.025]].forEach(([x, z]) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(.003, .003, .075, 6), mConc.clone());
+    pole.position.set(x, .0375, z); root.add(pole);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.005, 6, 6), mNeon(0xffffaa));
+    lamp.position.set(x, .078, z); root.add(lamp);
   });
 
-  // Neon sign on podium
-  const sign=new THREE.Mesh(new THREE.BoxGeometry(.06,.012,.002), matNeon(0x00e5ff));
-  sign.position.set(-.05,.155,.192); root.add(sign);
+  // Neon sign
+  const ns = new THREE.Mesh(new THREE.BoxGeometry(.055, .011, .002), mNeon(0x00e5ff));
+  ns.position.set(-.05, .143, .185); root.add(ns);
 
-  // Ground glow disc (emissive circle at base)
-  const glow=new THREE.Mesh(new THREE.CircleGeometry(W*.28,32),
-    new THREE.MeshBasicMaterial({color:0x001a22,transparent:true,opacity:.7}));
-  glow.rotation.x=-Math.PI/2; glow.position.y=.0005; root.add(glow);
+  // Ground glow
+  const gg = new THREE.Mesh(new THREE.CircleGeometry(.26, 32),
+    new THREE.MeshBasicMaterial({ color:0x001a22, transparent:true, opacity:.65 }));
+  gg.rotation.x = -Math.PI / 2; gg.position.y = .0003; root.add(gg);
 
-  // Central plaza — small elevated square
-  const plaza=new THREE.Mesh(new THREE.BoxGeometry(.12,.006,.12),
-    new THREE.MeshPhongMaterial({color:0x2a2a3a,shininess:10}));
-  plaza.position.set(0,.003,0); root.add(plaza);
+  // Central plaza
+  const pl = new THREE.Mesh(new THREE.BoxGeometry(.11, .005, .11),
+    new THREE.MeshPhongMaterial({ color:0x252535, shininess:8 }));
+  pl.position.y = .0025; root.add(pl);
 
-  // Plaza trees (tiny cones)
-  [[-0.04,-.04],[.04,-.04],[-.04,.04],[.04,.04]].forEach(([x,z])=>{
-    const t=new THREE.Mesh(new THREE.ConeGeometry(.009,.025,6),
-      new THREE.MeshPhongMaterial({color:0x1a4422,emissive:0x050e08}));
-    t.position.set(x,.012,z); root.add(t);
+  // Plaza trees
+  [[-0.038, -.038], [.038, -.038], [-.038, .038], [.038, .038]].forEach(([x, z]) => {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(.008, .022, 6), mTree.clone());
+    t.position.set(x, .011, z); root.add(t);
   });
 }
 
-/* ══════════════════════════════════════════════════
-   QR → WORLD TRANSFORM (Homography)
+/* =====================================================
+   SPAWN CITY
+===================================================== */
+function spawnCity() {
+  city.visible = true;
+  spawnPct = 0;
 
-   Key idea: the QR code defines a known square in
-   the real world. We use its 4 corners to estimate:
-   1. Where its centre is in camera space
-   2. How big it appears → depth estimate
-   3. The orientation of the plane (roll, pitch, yaw)
-      from the perspective distortion of the corners
-
-   The city group is parented to an anchor object
-   that gets this full 6DOF transform applied.
-══════════════════════════════════════════════════ */
-
-// Anchor object sits at the QR plane centre
-const anchorObj = new THREE.Object3D();
-
-function initAnchor(){
-  scene.add(anchorObj);
-  anchorObj.add(city); // city is child of anchor
-}
-
-function updateAnchorFromQR(loc){
-  // ── Step 1: corner positions in [0..1] normalised image coords ──
-  const W=640, H=480;
-  const TL={x:loc.topLeftCorner.x/W,     y:loc.topLeftCorner.y/H};
-  const TR={x:loc.topRightCorner.x/W,    y:loc.topRightCorner.y/H};
-  const BR={x:loc.bottomRightCorner.x/W, y:loc.bottomRightCorner.y/H};
-  const BL={x:loc.bottomLeftCorner.x/W,  y:loc.bottomLeftCorner.y/H};
-
-  // ── Step 2: NDC centre ──
-  const cx=((TL.x+TR.x+BR.x+BL.x)/4-0.5)*2;
-  const cy=-((TL.y+TR.y+BR.y+BL.y)/4-0.5)*2;
-
-  // ── Step 3: Apparent size → depth ──
-  // Average of top+bottom edge widths and left+right edge heights
-  const edgeT=Math.sqrt((TR.x-TL.x)**2+(TR.y-TL.y)**2);
-  const edgeB=Math.sqrt((BR.x-BL.x)**2+(BR.y-BL.y)**2);
-  const edgeL=Math.sqrt((BL.x-TL.x)**2+(BL.y-TL.y)**2);
-  const edgeR=Math.sqrt((BR.x-TR.x)**2+(BR.y-TR.y)**2);
-  const ndcW=(edgeT+edgeB)/2; // width in image-space
-  const ndcH=(edgeL+edgeR)/2;
-  const ndcSize=(ndcW+ndcH)/2;
-
-  // Depth heuristic calibrated so ~10cm QR at arm's length (~60cm) reads correctly
-  // A 10cm QR at 60cm subtends ~0.16 of FOV width at 60° → ndcSize ≈ 0.16
-  const depth=THREE.MathUtils.clamp(0.16/(ndcSize+0.0001),0.08,8.0);
-
-  // ── Step 4: World-space centre of QR ──
-  const fov=THREE.MathUtils.degToRad(cam.fov);
-  const scH=2*Math.tan(fov/2)*depth;
-  const scW=scH*cam.aspect;
-  const wx=cx*scW/2;
-  const wy=cy*scH/2;
-  const wz=-depth;
-
-  // ── Step 5: Orientation from corner vectors ──
-  // Top edge direction → local X axis of QR plane
-  const txN={x:TR.x-TL.x, y:-(TR.y-TL.y)}; // flip Y (image vs world)
-  const txLen=Math.sqrt(txN.x**2+txN.y**2)||1;
-  const txNorm={x:txN.x/txLen, y:txN.y/txLen};
-
-  // Yaw (rotation around camera Z) from top edge tilt
-  const yaw=Math.atan2(txNorm.y, txNorm.x);
-
-  // Pitch from top-vs-bottom width ratio (perspective foreshortening)
-  const pitchSign=(edgeT-edgeB); // positive = top closer
-  const pitch=Math.atan2(pitchSign*3.5, 1.0)*0.55; // tuned factor
-
-  // Roll from left-vs-right height ratio
-  const rollSign=(edgeR-edgeL);
-  const roll=Math.atan2(rollSign*3.5, 1.0)*0.55;
-
-  // ── Step 6: City scale ──
-  // We want the city footprint (W=1 unit) to match the QR physical size
-  // QR apparent width in world units:
-  const qrWorldW=ndcW*scW;
-  // City is 1 unit wide → scale = qrWorldW, then add visual multiplier
-  // Multiplier 6 makes city feel BIG (buildings tower over you)
-  const cityScale=THREE.MathUtils.clamp(qrWorldW*6, 0.04, 4.0);
-
-  // ── Step 7: Smooth lerp toward new transform ──
-  const targetPos=new THREE.Vector3(wx,wy,wz);
-  anchorObj.position.lerp(targetPos,0.22);
-
-  // Lerp rotation via euler
-  const targetEul=new THREE.Euler(pitch, yaw, roll, 'YXZ');
-  const curEul=anchorObj.rotation;
-  curEul.x += (targetEul.x-curEul.x)*0.18;
-  curEul.y += (targetEul.y-curEul.y)*0.18;
-  curEul.z += (targetEul.z-curEul.z)*0.18;
-
-  // Scale: city lives inside anchorObj so its own scale is the city size
-  city.scale.setScalar(
-    city.scale.x + (cityScale*(spawnPct) - city.scale.x)*0.14
-  );
-
-  anchorValid=true;
-  staleness=0;
-}
-
-/* ══════════════════════════════════════════════════
-   SPAWN ANIMATION
-══════════════════════════════════════════════════ */
-function doSpawn(){
-  spawnPct=0;
-  // Flash
-  const fl=document.createElement('div'); fl.className='s-flash';
+  // Flash effect
+  const fl = document.createElement('div');
+  fl.className = 'sflash';
   document.getElementById('ar-screen').appendChild(fl);
-  setTimeout(()=>fl.remove(),800);
+  setTimeout(() => fl.remove(), 800);
 
-  setTimeout(showAnnotations,1100);
+  // Show annotations after growth anim
+  setTimeout(showAnnotations, 1200);
 }
 
-/* ══════════════════════════════════════════════════
+/* =====================================================
    AR LOOP
-══════════════════════════════════════════════════ */
-let T=0;
-function arLoop(){
-  if(!arActive)return;
-  raf=requestAnimationFrame(arLoop);
-  T+=0.016; frameN++;
+===================================================== */
+function arLoop() {
+  if (!arActive) return;
+  raf = requestAnimationFrame(arLoop);
+  T += 0.016;
+  frameN++;
 
-  // Track QR every 5 frames (~12Hz on 60fps device)
-  if(frameN%5===0 && window.jsQR && arVid.readyState>=2 && arVid.videoWidth){
+  // Track QR every 5 frames
+  if (frameN % 5 === 0 && jsqrReady && aVid.readyState >= 2 && aVid.videoWidth) {
     trackQR();
   }
 
-  // Spawn grow-in (cubic ease out)
-  if(city.visible && spawnPct<1){
-    spawnPct=Math.min(1, spawnPct+0.04);
+  // Grow in
+  if (city.visible && spawnPct < 1) {
+    spawnPct = Math.min(1, spawnPct + 0.035);
   }
 
-  // If QR not seen, let staleness accumulate
-  if(!anchorValid) staleness++;
-
-  // Subtle ambient animation on buildings (window lights flicker, etc.)
-  // Done via a global time uniform – just oscillate city Y slightly when NOT tracking
-  if(staleness>MAX_STALE && anchorValid){
-    anchorValid=false;
-    document.getElementById('anchor-status').classList.remove('locked');
-    document.getElementById('anchor-txt').textContent='Searching for QR…';
+  // Staleness
+  if (staleness > MAX_STALE) {
+    document.getElementById('astatus').classList.remove('locked');
+    document.getElementById('atxt').textContent = 'Looking for QR…';
+    staleness = MAX_STALE; // cap it
   }
 
-  if(annoVisible){
-    drawAnnLines();
-  }
+  if (annShown) drawAnnLines();
 
-  renderer.render(scene,cam);
+  renderer.render(scene, cam);
 }
 
-function trackQR(){
-  tCx.drawImage(arVid,0,0,640,480);
-  const id=tCx.getImageData(0,0,640,480);
-  const qr=jsQR(id.data,640,480,{inversionAttempts:'dontInvert'});
-  if(qr){
-    updateAnchorFromQR(qr.location);
-    document.getElementById('anchor-status').classList.add('locked');
-    document.getElementById('anchor-txt').textContent='Anchored to QR';
+/* =====================================================
+   QR TRACKING → ANCHOR TRANSFORM
+===================================================== */
+function trackQR() {
+  tCx.drawImage(aVid, 0, 0, 640, 480);
+  const id   = tCx.getImageData(0, 0, 640, 480);
+  const code = jsQR(id.data, 640, 480, { inversionAttempts: 'dontInvert' });
+
+  if (code) {
+    applyQRTransform(code.location);
+    staleness = 0;
+    document.getElementById('astatus').classList.add('locked');
+    document.getElementById('atxt').textContent = 'Anchored to QR';
   } else {
     staleness++;
   }
 }
 
-/* ══════════════════════════════════════════════════
+function applyQRTransform(loc) {
+  const W = 640, H = 480;
+
+  // Normalise corners to [0..1]
+  const TL = { x: loc.topLeftCorner.x    / W, y: loc.topLeftCorner.y    / H };
+  const TR = { x: loc.topRightCorner.x   / W, y: loc.topRightCorner.y   / H };
+  const BR = { x: loc.bottomRightCorner.x/ W, y: loc.bottomRightCorner.y/ H };
+  const BL = { x: loc.bottomLeftCorner.x / W, y: loc.bottomLeftCorner.y / H };
+
+  // Centre in NDC
+  const cx = ((TL.x + TR.x + BR.x + BL.x) / 4 - 0.5) * 2;
+  const cy = -((TL.y + TR.y + BR.y + BL.y) / 4 - 0.5) * 2;
+
+  // Edge lengths
+  const edgeT = Math.hypot(TR.x - TL.x, TR.y - TL.y);
+  const edgeB = Math.hypot(BR.x - BL.x, BR.y - BL.y);
+  const edgeL = Math.hypot(BL.x - TL.x, BL.y - TL.y);
+  const edgeR = Math.hypot(BR.x - TR.x, BR.y - TR.y);
+  const ndcW  = (edgeT + edgeB) / 2;
+  const ndcH  = (edgeL + edgeR) / 2;
+
+  // Depth from apparent size
+  const ndcAvg = (ndcW + ndcH) / 2;
+  const depth  = THREE.MathUtils.clamp(0.16 / (ndcAvg + 0.0001), 0.06, 9.0);
+
+  // World-space centre
+  const fov  = THREE.MathUtils.degToRad(cam.fov);
+  const scH  = 2 * Math.tan(fov / 2) * depth;
+  const scW  = scH * cam.aspect;
+  const wx   = cx * scW / 2;
+  const wy   = cy * scH / 2;
+  const wz   = -depth;
+
+  // Orientation — derive from QR edge vectors
+  // Yaw: angle of top edge in image plane
+  const yaw   = Math.atan2(-(TR.y - TL.y), TR.x - TL.x);
+  // Pitch: top edge shorter than bottom → QR tilted away at top
+  const pitch = Math.atan2((edgeT - edgeB) * 3.2, 1.0) * 0.5;
+  // Roll: left edge shorter than right → QR tilted to one side
+  const roll  = Math.atan2((edgeR - edgeL) * 3.2, 1.0) * 0.5;
+
+  // City scale: QR footprint × BIG multiplier so buildings tower
+  const qrWorld = ndcW * scW;
+  const cityS   = THREE.MathUtils.clamp(qrWorld * 10, 0.04, 5.0);
+
+  // Smooth lerp anchor position + rotation
+  anchor.position.lerp(new THREE.Vector3(wx, wy, wz), 0.25);
+  anchor.rotation.x += (pitch - anchor.rotation.x) * 0.2;
+  anchor.rotation.y += (yaw   - anchor.rotation.y) * 0.2;
+  anchor.rotation.z += (roll  - anchor.rotation.z) * 0.2;
+
+  // Scale city (child of anchor)
+  const targetS = cityS * spawnPct;
+  city.scale.setScalar(city.scale.x + (targetS - city.scale.x) * 0.15);
+}
+
+/* =====================================================
    ANNOTATIONS
-══════════════════════════════════════════════════ */
-const ANNS=[
-  {id:'ann-a', lp:[-0.18,0.65,0], side:'left'},
-  {id:'ann-b', lp:[ 0.18,0.62,0], side:'right'},
-  {id:'ann-c', lp:[-0.10,-0.02,0], side:'left'},
-  {id:'ann-d', lp:[ 0.08,0.45,0], side:'right'},
+===================================================== */
+const ANNS = [
+  { id: 'ann-a', lp: [-0.18, 0.65, 0],  side: 'left'  },
+  { id: 'ann-b', lp: [ 0.18, 0.60, 0],  side: 'right' },
+  { id: 'ann-c', lp: [-0.10, -0.02, 0], side: 'left'  },
+  { id: 'ann-d', lp: [ 0.09, 0.44, 0],  side: 'right' },
 ];
-const ANN_POS={
-  'ann-a':{left:'3vw',top:'18%'},
-  'ann-b':{right:'3vw',top:'18%'},
-  'ann-c':{left:'3vw',top:'62%'},
-  'ann-d':{right:'3vw',top:'62%'},
+const ANN_POS = {
+  'ann-a': { left: '3vw',  top: '18%', right: 'auto', bottom: 'auto' },
+  'ann-b': { right:'3vw',  top: '18%', left:  'auto', bottom: 'auto' },
+  'ann-c': { left: '3vw',  top: '63%', right: 'auto', bottom: 'auto' },
+  'ann-d': { right:'3vw',  top: '63%', left:  'auto', bottom: 'auto' },
 };
-let annoVisible=false;
-function showAnnotations(){
-  annoVisible=true;
-  ANNS.forEach(a=>{
-    const el=document.getElementById(a.id);
-    Object.assign(el.style,ANN_POS[a.id]);
+
+function showAnnotations() {
+  annShown = true;
+  ANNS.forEach(a => {
+    const el = document.getElementById(a.id);
+    Object.assign(el.style, ANN_POS[a.id]);
     el.classList.add('on');
   });
 }
 
-const _vp=new THREE.Vector3();
-function proj3D(lx,ly,lz){
-  _vp.set(lx,ly,lz);
-  // lx,ly,lz are in city-local space
+const _vp = new THREE.Vector3();
+function proj(lx, ly, lz) {
+  _vp.set(lx, ly, lz);
   _vp.applyMatrix4(city.matrixWorld);
   _vp.project(cam);
-  return{x:(_vp.x*.5+.5)*window.innerWidth, y:(-_vp.y*.5+.5)*window.innerHeight};
-}
-function panelEdgePt(id,tx,ty){
-  const el=document.getElementById(id), r=el.getBoundingClientRect();
-  const cx=r.left+r.width/2, cy=r.top+r.height/2;
-  const dx=tx-cx, dy=ty-cy, len=Math.sqrt(dx*dx+dy*dy)||1;
-  return{
-    x:Math.max(r.left,Math.min(r.right, cx+dx/len*(r.width/2+3))),
-    y:Math.max(r.top, Math.min(r.bottom,cy+dy/len*(r.height/2+3)))
+  return {
+    x: (_vp.x *  0.5 + 0.5) * window.innerWidth,
+    y: (_vp.y * -0.5 + 0.5) * window.innerHeight,
+    behind: _vp.z > 1
   };
 }
 
-function drawAnnLines(){
-  if(spawnPct<0.4)return;
-  const svg=document.getElementById('ann-svg');
-  svg.innerHTML='';
-  const alpha=Math.min(1,(spawnPct-0.4)/0.4);
+function edgePt(id, tx, ty) {
+  const el = document.getElementById(id);
+  const r  = el.getBoundingClientRect();
+  const cx = r.left + r.width  / 2;
+  const cy = r.top  + r.height / 2;
+  const dx = tx - cx, dy = ty - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  return {
+    x: Math.max(r.left, Math.min(r.right,  cx + (dx / len) * (r.width  / 2 + 4))),
+    y: Math.max(r.top,  Math.min(r.bottom, cy + (dy / len) * (r.height / 2 + 4)))
+  };
+}
 
-  ANNS.forEach(a=>{
-    const el=document.getElementById(a.id);
-    if(!el.classList.contains('on'))return;
-    const [lx,ly,lz]=a.lp;
-    const obj=proj3D(lx,ly,lz);
-    // Skip if behind camera
-    if(_vp.z>1)return;
-    const edge=panelEdgePt(a.id,obj.x,obj.y);
-    const midX=a.side==='left'?(obj.x+edge.x)/2-18:(obj.x+edge.x)/2+18;
-    const midY=(obj.y+edge.y)/2;
+function drawAnnLines() {
+  if (spawnPct < 0.35) return;
+  const svg   = document.getElementById('asvg');
+  svg.innerHTML = '';
+  const alpha = Math.min(1, (spawnPct - 0.35) / 0.35);
 
-    // Dashed line path
-    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d',`M${edge.x},${edge.y} L${midX},${midY} L${obj.x},${obj.y}`);
-    path.setAttribute('stroke',`rgba(0,229,255,${0.5*alpha})`);
-    path.setAttribute('stroke-width','0.9');
-    path.setAttribute('stroke-dasharray','4 3');
-    path.setAttribute('fill','none');
+  ANNS.forEach(a => {
+    const el = document.getElementById(a.id);
+    if (!el.classList.contains('on')) return;
+
+    const pt = proj(...a.lp);
+    if (pt.behind) return;
+
+    const edge = edgePt(a.id, pt.x, pt.y);
+    const midX = a.side === 'left' ? (pt.x + edge.x) / 2 - 16 : (pt.x + edge.x) / 2 + 16;
+    const midY = (pt.y + edge.y) / 2;
+
+    // Line
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${edge.x},${edge.y} L${midX},${midY} L${pt.x},${pt.y}`);
+    path.setAttribute('stroke', `rgba(0,229,255,${0.48 * alpha})`);
+    path.setAttribute('stroke-width', '0.85');
+    path.setAttribute('stroke-dasharray', '4 3');
+    path.setAttribute('fill', 'none');
     svg.appendChild(path);
 
-    // Anchor dot
-    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    dot.setAttribute('cx',obj.x); dot.setAttribute('cy',obj.y);
-    dot.setAttribute('r','2.5'); dot.setAttribute('fill',`rgba(0,229,255,${0.9*alpha})`);
+    // Dot
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+    dot.setAttribute('r', '2.5'); dot.setAttribute('fill', `rgba(0,229,255,${0.9 * alpha})`);
     svg.appendChild(dot);
 
-    // Outer ring (animated pulse via CSS would need style injection; do a static ring)
-    const ring=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    ring.setAttribute('cx',obj.x); ring.setAttribute('cy',obj.y);
-    ring.setAttribute('r','6'); ring.setAttribute('fill','none');
-    ring.setAttribute('stroke',`rgba(0,229,255,${0.3*alpha})`);
-    ring.setAttribute('stroke-width','1');
+    // Ring
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('cx', pt.x); ring.setAttribute('cy', pt.y);
+    ring.setAttribute('r', '5.5'); ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', `rgba(0,229,255,${0.28 * alpha})`);
+    ring.setAttribute('stroke-width', '1');
     svg.appendChild(ring);
 
-    // Tick mark
-    const tw=a.side==='left'?-8:8;
-    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',edge.x); tick.setAttribute('y1',edge.y);
-    tick.setAttribute('x2',edge.x+tw); tick.setAttribute('y2',edge.y);
-    tick.setAttribute('stroke',`rgba(0,229,255,${0.65*alpha})`);
-    tick.setAttribute('stroke-width','1.4');
+    // Tick
+    const tw   = a.side === 'left' ? -8 : 8;
+    const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    tick.setAttribute('x1', edge.x); tick.setAttribute('y1', edge.y);
+    tick.setAttribute('x2', edge.x + tw); tick.setAttribute('y2', edge.y);
+    tick.setAttribute('stroke', `rgba(0,229,255,${0.62 * alpha})`);
+    tick.setAttribute('stroke-width', '1.4');
     svg.appendChild(tick);
   });
 }
 
-/* ══════════════════════════════════════════════════
-   STOP & RESIZE
-══════════════════════════════════════════════════ */
-function stopAR(){
-  arActive=false; annoVisible=false; spawnPct=0; anchorValid=false; staleness=0; frameN=0;
-  if(raf)cancelAnimationFrame(raf);
-  if(renderer){renderer.dispose();renderer=null;}
-  city=null;
-  document.getElementById('ann-svg').innerHTML='';
-  document.querySelectorAll('.ann').forEach(e=>e.classList.remove('on'));
-  window.removeEventListener('resize',onResize);
+/* =====================================================
+   TEARDOWN
+===================================================== */
+function teardownAR() {
+  arActive  = false;
+  annShown  = false;
+  spawnPct  = 0;
+  staleness = 0;
+  frameN    = 0;
+  if (raf)      cancelAnimationFrame(raf);
+  if (renderer) { renderer.dispose(); renderer = null; }
+  city    = null;
+  anchor  = null;
+  scene   = null;
+  cam     = null;
+  document.getElementById('asvg').innerHTML = '';
+  document.querySelectorAll('.ann').forEach(e => e.classList.remove('on'));
+  window.removeEventListener('resize', onResize);
 }
-function onResize(){
-  if(!renderer||!cam)return;
-  cam.aspect=window.innerWidth/window.innerHeight;
+
+function onResize() {
+  if (!renderer || !cam) return;
+  cam.aspect = window.innerWidth / window.innerHeight;
   cam.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-}
-
-/* ─ BOOT ─ */
-window.addEventListener('DOMContentLoaded',()=>{
-  initScan();
-  // initAnchor is called inside initAR after scene is created
-});
-
-// Patch initAR to call initAnchor after scene setup
-const _origInitAR=initAR;
-function initAR(){
-  arActive=true;
-  renderer=new THREE.WebGLRenderer({canvas:arCv,alpha:true,antialias:true});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  renderer.setSize(window.innerWidth,window.innerHeight);
-  renderer.setClearColor(0x000000,0);
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-
-  scene=new THREE.Scene();
-  cam=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.001,1000);
-  cam.position.set(0,0,0);
-
-  const ambient=new THREE.AmbientLight(0xffffff,0.45); scene.add(ambient);
-  const sun=new THREE.DirectionalLight(0xfff0cc,1.0);
-  sun.position.set(5,10,8); sun.castShadow=true;
-  sun.shadow.mapSize.width=2048; sun.shadow.mapSize.height=2048;
-  sun.shadow.camera.near=0.01; sun.shadow.camera.far=50;
-  sun.shadow.camera.left=sun.shadow.camera.bottom=-3;
-  sun.shadow.camera.right=sun.shadow.camera.top=3;
-  scene.add(sun);
-  scene.add(new THREE.DirectionalLight(0xaaccff,0.4).position.set(-6,4,-4)||new THREE.Object3D());
-  const fill=new THREE.DirectionalLight(0xaaccff,0.4); fill.position.set(-6,4,-4); scene.add(fill);
-  const rim=new THREE.DirectionalLight(0x00e5ff,0.25); rim.position.set(0,8,-10); scene.add(rim);
-
-  city=new THREE.Group();
-  city.visible=false;
-  city.scale.setScalar(0.001);
-
-  // Anchor sits at QR plane; city is its child
-  const anchor=new THREE.Object3D();
-  scene.add(anchor);
-  anchor.add(city);
-  // Expose anchor globally for updateAnchorFromQR
-  window._arAnchor=anchor;
-
-  buildCity(city);
-
-  tCv=document.createElement('canvas'); tCv.width=640; tCv.height=480;
-  tCx=tCv.getContext('2d',{willReadFrequently:true});
-
-  window.addEventListener('resize',onResize);
-  arLoop();
-  setTimeout(()=>{ city.visible=true; doSpawn(); },600);
-}
-
-// Patch updateAnchorFromQR to use window._arAnchor
-const _origUpdate=updateAnchorFromQR;
-function updateAnchorFromQR(loc){
-  const anchor=window._arAnchor; if(!anchor)return;
-  const W=640,H=480;
-  const TL={x:loc.topLeftCorner.x/W,     y:loc.topLeftCorner.y/H};
-  const TR={x:loc.topRightCorner.x/W,    y:loc.topRightCorner.y/H};
-  const BR={x:loc.bottomRightCorner.x/W, y:loc.bottomRightCorner.y/H};
-  const BL={x:loc.bottomLeftCorner.x/W,  y:loc.bottomLeftCorner.y/H};
-
-  const cx=((TL.x+TR.x+BR.x+BL.x)/4-0.5)*2;
-  const cy=-((TL.y+TR.y+BR.y+BL.y)/4-0.5)*2;
-
-  const edgeT=Math.sqrt((TR.x-TL.x)**2+(TR.y-TL.y)**2);
-  const edgeB=Math.sqrt((BR.x-BL.x)**2+(BR.y-BL.y)**2);
-  const edgeL=Math.sqrt((BL.x-TL.x)**2+(BL.y-TL.y)**2);
-  const edgeR=Math.sqrt((BR.x-TR.x)**2+(BR.y-TR.y)**2);
-  const ndcW=(edgeT+edgeB)/2;
-  const ndcH=(edgeL+edgeR)/2;
-  const ndcSize=(ndcW+ndcH)/2;
-
-  const depth=THREE.MathUtils.clamp(0.16/(ndcSize+0.0001),0.08,8.0);
-  const fov=THREE.MathUtils.degToRad(cam.fov);
-  const scH=2*Math.tan(fov/2)*depth;
-  const scW=scH*cam.aspect;
-
-  const wx=cx*scW/2;
-  const wy=cy*scH/2;
-  const wz=-depth;
-
-  // Orientation from corners
-  const txN={x:TR.x-TL.x, y:-(TR.y-TL.y)};
-  const txLen=Math.sqrt(txN.x**2+txN.y**2)||1;
-  const txNorm={x:txN.x/txLen,y:txN.y/txLen};
-  const yaw=Math.atan2(txNorm.y,txNorm.x);
-  const pitch=Math.atan2((edgeT-edgeB)*3.5,1.0)*0.55;
-  const roll=Math.atan2((edgeR-edgeL)*3.5,1.0)*0.55;
-
-  // Scale city to QR footprint × big multiplier
-  const qrWorldW=ndcW*scW;
-  const cityScale=THREE.MathUtils.clamp(qrWorldW*8,0.04,5.0);
-
-  // Smooth lerp
-  const tp=new THREE.Vector3(wx,wy,wz);
-  anchor.position.lerp(tp,0.22);
-  anchor.rotation.x+=(pitch-anchor.rotation.x)*0.18;
-  anchor.rotation.y+=(yaw-anchor.rotation.y)*0.18;
-  anchor.rotation.z+=(roll-anchor.rotation.z)*0.18;
-
-  // City is child of anchor — scale it
-  const tS=cityScale*spawnPct;
-  city.scale.setScalar(city.scale.x+(tS-city.scale.x)*0.14);
-
-  anchorValid=true; staleness=0;
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 </script>
 </body>

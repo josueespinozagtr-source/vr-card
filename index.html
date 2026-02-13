@@ -16,7 +16,8 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent}
 
 /* ── LOADING SCREEN ── */
-#loading{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg)}
+#loading{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);transition:opacity .5s}
+#loading.hide{opacity:0;pointer-events:none}
 .grid{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:40px 40px}
 .load-hdr{position:absolute;top:0;left:0;right:0;padding:1.3rem 1.5rem;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(6,6,12,.95),transparent);z-index:2}
 .brand{font-family:var(--display);font-size:1rem;font-weight:800;letter-spacing:.06em}
@@ -25,21 +26,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
 .pd{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.4s infinite}
 
 .spinner{width:60px;height:60px;border:3px solid rgba(0,229,255,.1);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:1.5rem}
-.load-msg{font-size:.72rem;color:var(--muted);text-align:center;max-width:280px;line-height:1.8}
-.load-msg strong{color:var(--text)}
+.load-msg{font-size:.72rem;color:var(--muted);text-align:center;max-width:320px;line-height:1.8;padding:0 1rem}
+.load-msg strong{color:var(--text);display:block;margin-bottom:.3rem}
+
+#start-btn{margin-top:2rem;background:linear-gradient(135deg,var(--accent),#0099bb);color:#06060c;font-family:var(--display);font-size:.9rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:50px;padding:.85rem 2.2rem;cursor:pointer;box-shadow:0 0 44px rgba(0,229,255,.4);transition:transform .2s;display:none}
+#start-btn.show{display:block}
+#start-btn:active{transform:scale(.95)}
 
 /* ── AR CONTAINER ── */
 #ar-container{position:fixed;inset:0;z-index:1;display:none}
-.a-canvas{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important}
+#ar-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#ar-canvas{position:absolute;inset:0;width:100%;height:100%}
 
 /* ── AR HUD ── */
-.arhud{position:fixed;top:0;left:0;right:0;z-index:30;padding:.9rem 1.3rem;background:linear-gradient(180deg,rgba(0,0,0,.82),transparent);display:flex;align-items:center;gap:.7rem;pointer-events:none}
+.arhud{position:fixed;top:0;left:0;right:0;z-index:30;padding:.9rem 1.3rem;background:linear-gradient(180deg,rgba(0,0,0,.82),transparent);display:none;align-items:center;gap:.7rem;pointer-events:none}
+.arhud.show{display:flex}
 .arhtitle{font-family:var(--display);font-size:.9rem;font-weight:800;color:#fff;flex:1;letter-spacing:.04em}
 .arlive{display:flex;align-items:center;gap:.3rem;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);border-radius:50px;padding:.25rem .7rem}
 .arxbtn{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;font-size:.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;pointer-events:auto;transition:background .2s}
 .arxbtn:hover{background:rgba(255,255,255,.22)}
 
-#astatus{position:fixed;top:3.8rem;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:50px;padding:.38rem 1rem;font-size:.58rem;letter-spacing:.1em;color:rgba(255,255,255,.7);white-space:nowrap;display:flex;align-items:center;gap:.4rem;transition:border-color .3s,color .3s}
+#astatus{position:fixed;top:3.8rem;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:50px;padding:.38rem 1rem;font-size:.58rem;letter-spacing:.1em;color:rgba(255,255,255,.7);white-space:nowrap;display:none;align-items:center;gap:.4rem;transition:border-color .3s,color .3s}
+#astatus.show{display:flex}
 #astatus.locked{border-color:rgba(0,229,255,.35);color:var(--accent)}
 
 /* Annotation panels */
@@ -53,7 +61,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
 .abar{height:1.5px;width:65px;background:linear-gradient(90deg,var(--accent),transparent);margin:.3rem 0;border-radius:1px}
 .abar.r{background:linear-gradient(270deg,var(--accent),transparent)}
 
-.arfoot{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:1.1rem 1.3rem .9rem;background:linear-gradient(0deg,rgba(0,0,0,.9),transparent);display:flex;align-items:flex-end;gap:.8rem}
+.arfoot{position:fixed;bottom:0;left:0;right:0;z-index:30;padding:1.1rem 1.3rem .9rem;background:linear-gradient(0deg,rgba(0,0,0,.9),transparent);display:none;align-items:flex-end;gap:.8rem}
+.arfoot.show{display:flex}
 .afm{flex:1}
 .afsup{font-size:.5rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:.2rem}
 .afname{font-family:var(--display);font-size:1.2rem;font-weight:800;line-height:1;color:var(--text)}
@@ -65,7 +74,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
 
 #asvg{position:fixed;inset:0;width:100%;height:100%;z-index:25;pointer-events:none;overflow:visible}
 
-.instructions{position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.7);border:1px solid rgba(0,229,255,.3);backdrop-filter:blur(10px);border-radius:12px;padding:1rem 1.5rem;font-size:.65rem;color:var(--muted);text-align:center;max-width:320px;line-height:1.8}
+.instructions{position:fixed;bottom:6rem;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.7);border:1px solid rgba(0,229,255,.3);backdrop-filter:blur(10px);border-radius:12px;padding:1rem 1.5rem;font-size:.65rem;color:var(--muted);text-align:center;max-width:320px;line-height:1.8;display:none}
+.instructions.show{display:block}
 .instructions strong{color:var(--accent);display:block;margin-bottom:.3rem;font-size:.72rem;letter-spacing:.08em}
 
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -80,26 +90,30 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
   <div class="grid"></div>
   <div class="load-hdr">
     <span class="brand">AR<em>CITY</em></span>
-    <div class="spill"><span class="pd"></span><span id="stxt">INITIALIZING</span></div>
+    <div class="spill"><span class="pd"></span><span id="stxt">READY</span></div>
   </div>
   <div class="spinner"></div>
-  <p class="load-msg"><strong>Loading AR Engine</strong><br/>Please allow camera access when prompted</p>
+  <p class="load-msg"><strong>AR City Viewer</strong>Point your camera at any printed QR code to see a 3D city float above it</p>
+  <button id="start-btn" class="show">START AR</button>
 </div>
 
 <!-- AR CONTAINER -->
-<div id="ar-container"></div>
-
-<!-- AR HUD -->
-<div class="arhud" style="display:none" id="hud">
-  <span class="arhtitle">AR CITY VIEWER</span>
-  <div class="arlive"><span class="pd"></span>LIVE</div>
-  <button class="arxbtn" onclick="window.location.reload()">✕</button>
+<div id="ar-container">
+  <video id="ar-video" autoplay playsinline muted></video>
+  <canvas id="ar-canvas"></canvas>
 </div>
 
-<div id="astatus" style="display:none"><span>⟳</span><span id="atxt">Looking for marker…</span></div>
+<!-- AR HUD -->
+<div class="arhud" id="hud">
+  <span class="arhtitle">AR CITY VIEWER</span>
+  <div class="arlive"><span class="pd"></span>LIVE</div>
+  <button class="arxbtn" onclick="stopAR()">✕</button>
+</div>
 
-<div class="instructions" style="display:none" id="instructions">
-  <strong>Point camera at any QR code</strong>
+<div id="astatus"><span>⟳</span><span id="atxt">Looking for QR code…</span></div>
+
+<div class="instructions" id="instructions">
+  <strong>Point at any QR code</strong>
   The city will appear floating above it
 </div>
 
@@ -131,7 +145,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
   </div>
 </div>
 
-<div class="arfoot" style="display:none" id="footer">
+<div class="arfoot" id="footer">
   <div class="afm">
     <div class="afsup">AR / 2024 / MASTERPLAN</div>
     <div class="afname">Nova District</div>
@@ -144,14 +158,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
 <svg id="asvg"></svg>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
 /* =====================================================
    STATE
 ===================================================== */
-let renderer, scene, camera, markerRoot;
-let city, annShown = false, spawnPct = 0, markerVisible = false;
-let frameCount = 0, T = 0;
+let video, canvas, ctx, renderer, scene, camera, city;
+let animationId, trackingInterval;
+let markerVisible = false, spawnPct = 0, annShown = false;
+let T = 0;
+
+// Marker tracking
+let markerMatrix = new THREE.Matrix4();
+let markerPos = new THREE.Vector3();
+let markerRot = new THREE.Euler();
+let markerScale = 1;
+let smoothPos = new THREE.Vector3();
+let smoothRot = new THREE.Euler();
+let smoothScale = 0.01;
 
 const ANNS = [
   { id: 'ann-a', lp: [-0.18, 0.95, 0],  side: 'left'  },
@@ -167,174 +191,194 @@ const ANN_POS = {
 };
 
 /* =====================================================
-   INIT AR
+   INIT
 ===================================================== */
-window.addEventListener('load', initAR);
+document.getElementById('start-btn').addEventListener('click', startAR);
 
-async function initAR() {
+async function startAR() {
   try {
-    // Request camera access first
+    // Get camera stream
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
+      video: { 
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
       audio: false
     });
-    
-    // Stop the test stream
-    stream.getTracks().forEach(track => track.stop());
-    
-    // Setup AR.js with barcode tracking (works with any QR/barcode)
-    const arToolkitSource = new THREEx.ArToolkitSource({
-      sourceType: 'webcam',
-      sourceWidth: 1280,
-      sourceHeight: 720,
-    });
 
-    arToolkitSource.init(() => {
-      setTimeout(() => {
-        onResize();
-      }, 2000);
-    });
+    video = document.getElementById('ar-video');
+    video.srcObject = stream;
+    await video.play();
 
-    // Initialize renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setClearColor(new THREE.Color('black'), 0);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0';
-    renderer.domElement.style.left = '0';
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.getElementById('ar-container').appendChild(renderer.domElement);
+    // Setup canvas for QR detection
+    canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    // Initialize scene and camera
-    scene = new THREE.Scene();
-    camera = new THREE.Camera();
-    scene.add(camera);
+    // Setup Three.js
+    setupThreeJS();
 
-    // Setup AR.js context
-    const arToolkitContext = new THREEx.ArToolkitContext({
-      cameraParametersUrl: 'https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/data/data/camera_para.dat',
-      detectionMode: 'mono',
-    });
-
-    arToolkitContext.init(() => {
-      camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-    });
-
-    // Create marker root - tracks ANY barcode/QR
-    const arMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
-      type: 'barcode',
-      barcodeValue: 0, // Will detect any barcode
-      changeMatrixMode: 'cameraTransformMatrix',
-      smooth: true,
-      smoothCount: 10,
-      smoothTolerance: 0.01,
-      smoothThreshold: 2,
-    });
-
-    markerRoot = new THREE.Group();
-    scene.add(markerRoot);
-
-    // Add lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    
-    const sun = new THREE.DirectionalLight(0xfff8e0, 1.0);
-    sun.position.set(2, 4, 3);
-    sun.castShadow = true;
-    sun.shadow.mapSize.setScalar(1024);
-    sun.shadow.camera.near = 0.1;
-    sun.shadow.camera.far = 20;
-    sun.shadow.camera.left = sun.shadow.camera.bottom = -2;
-    sun.shadow.camera.right = sun.shadow.camera.top = 2;
-    scene.add(sun);
-    
-    const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
-    fill.position.set(-3, 2, -2);
-    scene.add(fill);
-    
-    const rim = new THREE.DirectionalLight(0x00e5ff, 0.25);
-    rim.position.set(0, 4, -5);
-    scene.add(rim);
-
-    // Build city
-    city = new THREE.Group();
-    city.position.set(0, 0.15, 0); // Float above marker
-    city.scale.setScalar(0.01);
-    markerRoot.add(city);
-    buildCity(city);
-
-    // Hide loading, show AR interface
-    document.getElementById('loading').style.display = 'none';
+    // Show AR interface
+    document.getElementById('loading').classList.add('hide');
     document.getElementById('ar-container').style.display = 'block';
-    document.getElementById('hud').style.display = 'flex';
-    document.getElementById('astatus').style.display = 'flex';
-    document.getElementById('instructions').style.display = 'block';
-    document.getElementById('footer').style.display = 'flex';
+    document.getElementById('hud').classList.add('show');
+    document.getElementById('astatus').classList.add('show');
+    document.getElementById('instructions').classList.add('show');
+    document.getElementById('footer').classList.add('show');
 
-    // Start render loop
-    let lastMarkerVisible = false;
-    
-    function animate() {
-      requestAnimationFrame(animate);
-      frameCount++;
-      T += 0.016;
-
-      if (arToolkitSource.ready) {
-        arToolkitContext.update(arToolkitSource.domElement);
-      }
-
-      // Check if marker is visible
-      markerVisible = arMarkerControls.object3d.visible;
-      
-      if (markerVisible && !lastMarkerVisible) {
-        onMarkerFound();
-      } else if (!markerVisible && lastMarkerVisible) {
-        onMarkerLost();
-      }
-      
-      lastMarkerVisible = markerVisible;
-
-      // Animate city
-      if (markerVisible && spawnPct < 1) {
-        spawnPct = Math.min(1, spawnPct + 0.03);
-        city.scale.setScalar(spawnPct * 0.5); // Fixed scale: 0.5 world units
-      }
-
-      // Subtle floating animation
-      if (markerVisible) {
-        city.position.y = 0.15 + Math.sin(T * 0.8) * 0.01;
-        city.rotation.y = Math.sin(T * 0.3) * 0.03;
-      }
-
-      if (annShown && markerVisible) {
-        drawAnnLines();
-      }
-
-      renderer.render(scene, camera);
-    }
-
+    // Start tracking and rendering
+    trackingInterval = setInterval(trackQR, 100);
     animate();
-    window.addEventListener('resize', onResize);
 
   } catch (error) {
-    console.error('AR Init Error:', error);
-    document.getElementById('stxt').textContent = 'ERROR';
-    document.querySelector('.load-msg').innerHTML = `<strong>Camera Access Denied</strong><br/>Please allow camera permissions and reload the page.<br/><br/>${error.message}`;
+    console.error('Camera error:', error);
+    document.querySelector('.load-msg').innerHTML = `<strong>Camera Access Required</strong>Please allow camera access in your browser settings and reload the page.<br/><br/><small>${error.message}</small>`;
+    document.getElementById('start-btn').style.display = 'none';
   }
 }
 
-function onMarkerFound() {
-  console.log('Marker found');
-  document.getElementById('astatus').classList.add('locked');
-  document.getElementById('atxt').textContent = 'Marker locked';
+function stopAR() {
+  if (video && video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
+  if (animationId) cancelAnimationFrame(animationId);
+  if (trackingInterval) clearInterval(trackingInterval);
+  window.location.reload();
+}
+
+/* =====================================================
+   THREE.JS SETUP
+===================================================== */
+function setupThreeJS() {
+  const arCanvas = document.getElementById('ar-canvas');
+  renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  scene = new THREE.Scene();
   
+  // Camera setup - FOV matches typical phone camera
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+  camera.position.set(0, 0, 0);
+  scene.add(camera);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  
+  const sun = new THREE.DirectionalLight(0xfff8e0, 1.0);
+  sun.position.set(2, 4, 3);
+  sun.castShadow = true;
+  sun.shadow.mapSize.setScalar(1024);
+  sun.shadow.camera.near = 0.1;
+  sun.shadow.camera.far = 20;
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -2;
+  sun.shadow.camera.right = sun.shadow.camera.top = 2;
+  scene.add(sun);
+  
+  const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
+  fill.position.set(-3, 2, -2);
+  scene.add(fill);
+  
+  const rim = new THREE.DirectionalLight(0x00e5ff, 0.25);
+  rim.position.set(0, 4, -5);
+  scene.add(rim);
+
+  // Build city
+  city = new THREE.Group();
+  city.visible = false;
+  scene.add(city);
+  buildCity(city);
+
+  window.addEventListener('resize', onResize);
+}
+
+/* =====================================================
+   QR TRACKING
+===================================================== */
+function trackQR() {
+  if (!video || video.readyState < 2) return;
+  
+  ctx.drawImage(video, 0, 0, 640, 480);
+  const imageData = ctx.getImageData(0, 0, 640, 480);
+  const code = jsQR(imageData.data, 640, 480, { inversionAttempts: 'dontInvert' });
+
+  if (code) {
+    if (!markerVisible) {
+      onMarkerFound();
+    }
+    updateMarkerPose(code.location);
+    markerVisible = true;
+    
+    document.getElementById('astatus').classList.add('locked');
+    document.getElementById('atxt').textContent = 'QR code locked';
+  } else {
+    if (markerVisible) {
+      onMarkerLost();
+    }
+    markerVisible = false;
+  }
+}
+
+function updateMarkerPose(location) {
+  const W = 640, H = 480;
+  
+  // Get corner positions in normalized device coordinates
+  const corners = [
+    { x: location.topLeftCorner.x / W * 2 - 1, y: -(location.topLeftCorner.y / H * 2 - 1) },
+    { x: location.topRightCorner.x / W * 2 - 1, y: -(location.topRightCorner.y / H * 2 - 1) },
+    { x: location.bottomRightCorner.x / W * 2 - 1, y: -(location.bottomRightCorner.y / H * 2 - 1) },
+    { x: location.bottomLeftCorner.x / W * 2 - 1, y: -(location.bottomLeftCorner.y / H * 2 - 1) }
+  ];
+  
+  // Calculate center position
+  const centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
+  const centerY = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4;
+  
+  // Calculate marker size in screen space
+  const sizeX = Math.abs(corners[1].x - corners[0].x);
+  const sizeY = Math.abs(corners[2].y - corners[1].y);
+  const markerSize = (sizeX + sizeY) / 2;
+  
+  // FIXED DISTANCE - this is the key parameter to adjust
+  const distance = 1.2; // meters from camera
+  
+  // Calculate world position
+  const fov = THREE.MathUtils.degToRad(camera.fov);
+  const viewportHeight = 2 * Math.tan(fov / 2) * distance;
+  const viewportWidth = viewportHeight * camera.aspect;
+  
+  markerPos.x = centerX * viewportWidth / 2;
+  markerPos.y = centerY * viewportHeight / 2;
+  markerPos.z = -distance;
+  
+  // Calculate rotation (simplified - just yaw for now)
+  const dx = corners[1].x - corners[0].x;
+  const dy = corners[1].y - corners[0].y;
+  const yaw = Math.atan2(dy, dx);
+  
+  markerRot.set(0, yaw, 0);
+  
+  // FIXED SCALE - this determines city size
+  // The city should be proportional to the QR code size
+  const qrSizeInWorld = markerSize * viewportWidth / 2;
+  markerScale = qrSizeInWorld * 0.8; // 80% of QR code size
+}
+
+function onMarkerFound() {
+  console.log('Marker found!');
+  city.visible = true;
   spawnPct = 0;
   
   // Flash effect
-  const fl = document.createElement('div');
-  fl.className = 'sflash';
-  document.body.appendChild(fl);
-  setTimeout(() => fl.remove(), 700);
+  const flash = document.createElement('div');
+  flash.className = 'sflash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
   
   // Show annotations after delay
   setTimeout(() => {
@@ -345,7 +389,7 @@ function onMarkerFound() {
 function onMarkerLost() {
   console.log('Marker lost');
   document.getElementById('astatus').classList.remove('locked');
-  document.getElementById('atxt').textContent = 'Looking for marker…';
+  document.getElementById('atxt').textContent = 'Looking for QR code…';
   hideAnnotations();
 }
 
@@ -364,10 +408,42 @@ function hideAnnotations() {
   document.getElementById('asvg').innerHTML = '';
 }
 
-function onResize() {
-  if (renderer && camera) {
-    renderer.setSize(window.innerWidth, window.innerHeight);
+/* =====================================================
+   ANIMATION LOOP
+===================================================== */
+function animate() {
+  animationId = requestAnimationFrame(animate);
+  T += 0.016;
+  
+  if (markerVisible) {
+    // Smooth interpolation
+    smoothPos.lerp(markerPos, 0.25);
+    smoothRot.x += (markerRot.x - smoothRot.x) * 0.2;
+    smoothRot.y += (markerRot.y - smoothRot.y) * 0.2;
+    smoothRot.z += (markerRot.z - smoothRot.z) * 0.2;
+    smoothScale += (markerScale - smoothScale) * 0.15;
+    
+    // Grow in effect
+    if (spawnPct < 1) {
+      spawnPct = Math.min(1, spawnPct + 0.03);
+    }
+    
+    // Apply transform to city
+    city.position.copy(smoothPos);
+    city.position.y += 0.15 * smoothScale; // Lift above marker
+    city.rotation.copy(smoothRot);
+    city.scale.setScalar(smoothScale * spawnPct);
+    
+    // Subtle floating animation
+    city.position.y += Math.sin(T * 0.8) * 0.008 * smoothScale;
+    city.rotation.y += Math.sin(T * 0.3) * 0.02;
   }
+  
+  if (annShown && markerVisible) {
+    drawAnnLines();
+  }
+  
+  renderer.render(scene, camera);
 }
 
 /* =====================================================
@@ -589,6 +665,14 @@ function drawAnnLines() {
     tick.setAttribute('stroke-width', '1.4');
     svg.appendChild(tick);
   });
+}
+
+function onResize() {
+  if (camera && renderer) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
 }
 </script>
 </body>

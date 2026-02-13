@@ -162,60 +162,60 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--m
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =====================================================
-   ALL STATE — single block, no duplicates
+   STATE
 ===================================================== */
-// Scan state
 let scanStream = null;
 let scanIv     = null;
 let qrLocked   = false;
 let jsqrReady  = false;
+let lastQRData = null;
 
-// AR state
 let arActive   = false;
 let renderer   = null;
 let scene      = null;
 let cam        = null;
 let raf        = null;
-let city       = null;     // THREE.Group — the city
-let anchor     = null;     // THREE.Object3D — sits on QR plane
-let tCv        = null;     // tracking canvas
+let city       = null;
+let anchor     = null;
+let tCv        = null;
 let tCx        = null;
 let frameN     = 0;
 let spawnPct   = 0;
 let annShown   = false;
 let staleness  = 0;
-const MAX_STALE = 40;
+const MAX_STALE = 30;
 let T          = 0;
 
-// DOM refs — grabbed once
+// Smooth tracking
+let targetPos = new THREE.Vector3();
+let targetRot = new THREE.Euler();
+let targetScale = 1;
+
 const sVid = document.getElementById('svid');
 const sHid = document.getElementById('shid');
 const aVid = document.getElementById('avid');
 const aCv  = document.getElementById('acv');
 
 /* =====================================================
-   BOOT — start camera immediately on page load
+   BOOT
 ===================================================== */
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
-  // Load jsQR first, camera second — both in parallel
   const jsqrProm = new Promise(resolve => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
     s.onload  = () => { jsqrReady = true; resolve(); };
-    s.onerror = () => resolve(); // fail gracefully
+    s.onerror = () => resolve();
     document.head.appendChild(s);
   });
 
-  // Request camera
   try {
     scanStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
   } catch (e) {
-    // Fallback: try without facingMode constraint (desktop browsers)
     try {
       scanStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     } catch (e2) {
@@ -225,18 +225,15 @@ async function boot() {
     }
   }
 
-  // Wire up scan viewfinder
   sVid.srcObject = scanStream;
   sVid.onloadedmetadata = () => sVid.play();
 
-  // Size the scan canvas
   sHid.width  = 640;
   sHid.height = 480;
   const sCx = sHid.getContext('2d', { willReadFrequently: true });
 
-  // Wait for jsQR then start scanning
   await jsqrProm;
-  scanIv = setInterval(() => scanTick(sCx), 200);
+  scanIv = setInterval(() => scanTick(sCx), 150);
 }
 
 function showCamError(msg) {
@@ -256,6 +253,7 @@ function scanTick(ctx) {
   const code    = jsQR(imgData.data, 640, 480, { inversionAttempts: 'dontInvert' });
 
   if (code) {
+    lastQRData = code.data;
     if (!qrLocked) {
       qrLocked = true;
       document.getElementById('stxt').textContent = 'LOCKED';
@@ -292,7 +290,6 @@ function launchAR() {
   document.getElementById('scan-screen').style.display = 'none';
   document.getElementById('ar-screen').style.display   = 'block';
 
-  // Reuse the same camera stream — no second permission prompt
   aVid.srcObject = scanStream;
   aVid.onloadedmetadata = () => aVid.play();
 
@@ -304,16 +301,15 @@ function closeAR() {
   document.getElementById('ar-screen').style.display   = 'none';
   document.getElementById('scan-screen').style.display = 'flex';
 
-  // Reset scan state
   qrLocked = false;
+  lastQRData = null;
   document.getElementById('startbtn').classList.remove('show');
   document.getElementById('blabel').classList.remove('show');
   document.getElementById('qrbox').classList.remove('on');
   document.getElementById('stxt').textContent = 'SCANNING';
 
-  // Restart scan interval
   const sCx = sHid.getContext('2d', { willReadFrequently: true });
-  scanIv = setInterval(() => scanTick(sCx), 200);
+  scanIv = setInterval(() => scanTick(sCx), 150);
 }
 
 /* =====================================================
@@ -327,7 +323,6 @@ function initAR() {
   staleness = 0;
   T         = 0;
 
-  // Renderer
   renderer = new THREE.WebGLRenderer({ canvas: aCv, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -335,13 +330,12 @@ function initAR() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 
-  // Scene + camera
   scene = new THREE.Scene();
-  cam   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.001, 1000);
+  cam   = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 1000);
+  cam.position.set(0, 0, 0);
 
-  // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const sun = new THREE.DirectionalLight(0xfff8e0, 0.95);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const sun = new THREE.DirectionalLight(0xfff8e0, 1.0);
   sun.position.set(5, 10, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(2048);
@@ -350,25 +344,28 @@ function initAR() {
   sun.shadow.camera.left   = sun.shadow.camera.bottom = -3;
   sun.shadow.camera.right  = sun.shadow.camera.top    =  3;
   scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xaaccff, 0.35);
+  
+  const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
   fill.position.set(-6, 4, -4);
   scene.add(fill);
-  const rim = new THREE.DirectionalLight(0x00e5ff, 0.2);
+  
+  const rim = new THREE.DirectionalLight(0x00e5ff, 0.25);
   rim.position.set(0, 8, -10);
   scene.add(rim);
 
-  // Anchor object — this gets transformed to match the QR plane
   anchor = new THREE.Object3D();
   scene.add(anchor);
 
-  // City group — child of anchor, so it inherits QR-plane transform
   city = new THREE.Group();
   anchor.add(city);
   city.visible = false;
+  
+  // Initialize city at origin, facing camera
+  city.position.set(0, 0, 0);
+  city.rotation.set(0, 0, 0);
 
   buildCity(city);
 
-  // Tracking canvas
   tCv = document.createElement('canvas');
   tCv.width  = 640;
   tCv.height = 480;
@@ -377,7 +374,6 @@ function initAR() {
   window.addEventListener('resize', onResize);
   arLoop();
 
-  // Spawn city shortly after
   setTimeout(spawnCity, 700);
 }
 
@@ -409,7 +405,7 @@ function buildCity(root) {
     root.add(r);
   });
 
-  // Buildings: [cx, cz, w, d, h, mat, style]
+  // Buildings
   const bldgs = [
     [-0.18, -0.12, .155, .155, .75, mGlass,  'tower'],
     [ 0.16, -0.13, .130, .130, .58, mDark,   'tower'],
@@ -434,11 +430,9 @@ function buildCity(root) {
     g.add(body);
 
     if (style === 'tower') {
-      // Spire
       const sp = new THREE.Mesh(new THREE.ConeGeometry(bw * .07, bh * .22, 8), mAccent.clone());
       sp.position.y = bh + bh * .11; sp.castShadow = true; g.add(sp);
 
-      // Window rows
       const rows = Math.floor(bh * 16);
       for (let r = 1; r < rows; r++) {
         const y = r * (bh / rows);
@@ -449,10 +443,8 @@ function buildCity(root) {
           g.add(wm);
         });
       }
-      // Roof ring
       const rng = new THREE.Mesh(new THREE.TorusGeometry(bw * .38, .007, 6, 20), mAccent.clone());
       rng.rotation.x = Math.PI / 2; rng.position.y = bh - .003; g.add(rng);
-      // Beacon
       const bc = new THREE.Mesh(new THREE.SphereGeometry(.006, 8, 8), mNeon(0x00e5ff));
       bc.position.y = bh + bh * .22; g.add(bc);
 
@@ -512,13 +504,11 @@ function spawnCity() {
   city.visible = true;
   spawnPct = 0;
 
-  // Flash effect
   const fl = document.createElement('div');
   fl.className = 'sflash';
   document.getElementById('ar-screen').appendChild(fl);
   setTimeout(() => fl.remove(), 800);
 
-  // Show annotations after growth anim
   setTimeout(showAnnotations, 1200);
 }
 
@@ -531,21 +521,32 @@ function arLoop() {
   T += 0.016;
   frameN++;
 
-  // Track QR every 5 frames
-  if (frameN % 5 === 0 && jsqrReady && aVid.readyState >= 2 && aVid.videoWidth) {
+  // Track QR every 3 frames
+  if (frameN % 3 === 0 && jsqrReady && aVid.readyState >= 2 && aVid.videoWidth) {
     trackQR();
   }
 
   // Grow in
   if (city.visible && spawnPct < 1) {
-    spawnPct = Math.min(1, spawnPct + 0.035);
+    spawnPct = Math.min(1, spawnPct + 0.04);
   }
+
+  // Apply smooth transform
+  anchor.position.lerp(targetPos, 0.3);
+  anchor.rotation.x += (targetRot.x - anchor.rotation.x) * 0.25;
+  anchor.rotation.y += (targetRot.y - anchor.rotation.y) * 0.25;
+  anchor.rotation.z += (targetRot.z - anchor.rotation.z) * 0.25;
+  
+  const currentScale = city.scale.x;
+  const newScale = currentScale + (targetScale * spawnPct - currentScale) * 0.2;
+  city.scale.setScalar(newScale);
 
   // Staleness
   if (staleness > MAX_STALE) {
     document.getElementById('astatus').classList.remove('locked');
     document.getElementById('atxt').textContent = 'Looking for QR…';
-    staleness = MAX_STALE; // cap it
+  } else {
+    staleness++;
   }
 
   if (annShown) drawAnnLines();
@@ -554,7 +555,7 @@ function arLoop() {
 }
 
 /* =====================================================
-   QR TRACKING → ANCHOR TRANSFORM
+   QR TRACKING
 ===================================================== */
 function trackQR() {
   tCx.drawImage(aVid, 0, 0, 640, 480);
@@ -566,21 +567,19 @@ function trackQR() {
     staleness = 0;
     document.getElementById('astatus').classList.add('locked');
     document.getElementById('atxt').textContent = 'Anchored to QR';
-  } else {
-    staleness++;
   }
 }
 
 function applyQRTransform(loc) {
   const W = 640, H = 480;
 
-  // Normalise corners to [0..1]
-  const TL = { x: loc.topLeftCorner.x    / W, y: loc.topLeftCorner.y    / H };
-  const TR = { x: loc.topRightCorner.x   / W, y: loc.topRightCorner.y   / H };
-  const BR = { x: loc.bottomRightCorner.x/ W, y: loc.bottomRightCorner.y/ H };
+  // Normalize corners
+  const TL = { x: loc.topLeftCorner.x / W, y: loc.topLeftCorner.y / H };
+  const TR = { x: loc.topRightCorner.x / W, y: loc.topRightCorner.y / H };
+  const BR = { x: loc.bottomRightCorner.x / W, y: loc.bottomRightCorner.y / H };
   const BL = { x: loc.bottomLeftCorner.x / W, y: loc.bottomLeftCorner.y / H };
 
-  // Centre in NDC
+  // Center in NDC
   const cx = ((TL.x + TR.x + BR.x + BL.x) / 4 - 0.5) * 2;
   const cy = -((TL.y + TR.y + BR.y + BL.y) / 4 - 0.5) * 2;
 
@@ -592,11 +591,11 @@ function applyQRTransform(loc) {
   const ndcW  = (edgeT + edgeB) / 2;
   const ndcH  = (edgeL + edgeR) / 2;
 
-  // Depth from apparent size
+  // Depth estimation - improved formula
   const ndcAvg = (ndcW + ndcH) / 2;
-  const depth  = THREE.MathUtils.clamp(0.16 / (ndcAvg + 0.0001), 0.06, 9.0);
+  const depth  = THREE.MathUtils.clamp(0.18 / (ndcAvg + 0.001), 0.08, 8.0);
 
-  // World-space centre
+  // World position
   const fov  = THREE.MathUtils.degToRad(cam.fov);
   const scH  = 2 * Math.tan(fov / 2) * depth;
   const scW  = scH * cam.aspect;
@@ -604,27 +603,18 @@ function applyQRTransform(loc) {
   const wy   = cy * scH / 2;
   const wz   = -depth;
 
-  // Orientation — derive from QR edge vectors
-  // Yaw: angle of top edge in image plane
+  targetPos.set(wx, wy, wz);
+
+  // Rotation - improved calculation
   const yaw   = Math.atan2(-(TR.y - TL.y), TR.x - TL.x);
-  // Pitch: top edge shorter than bottom → QR tilted away at top
-  const pitch = Math.atan2((edgeT - edgeB) * 3.2, 1.0) * 0.5;
-  // Roll: left edge shorter than right → QR tilted to one side
-  const roll  = Math.atan2((edgeR - edgeL) * 3.2, 1.0) * 0.5;
+  const pitch = Math.atan2((edgeT - edgeB) * 2.5, 1.0) * 0.6;
+  const roll  = Math.atan2((edgeR - edgeL) * 2.5, 1.0) * 0.6;
 
-  // City scale: QR footprint × BIG multiplier so buildings tower
+  targetRot.set(pitch, yaw, roll);
+
+  // Scale - bigger multiplier for more visible city
   const qrWorld = ndcW * scW;
-  const cityS   = THREE.MathUtils.clamp(qrWorld * 10, 0.04, 5.0);
-
-  // Smooth lerp anchor position + rotation
-  anchor.position.lerp(new THREE.Vector3(wx, wy, wz), 0.25);
-  anchor.rotation.x += (pitch - anchor.rotation.x) * 0.2;
-  anchor.rotation.y += (yaw   - anchor.rotation.y) * 0.2;
-  anchor.rotation.z += (roll  - anchor.rotation.z) * 0.2;
-
-  // Scale city (child of anchor)
-  const targetS = cityS * spawnPct;
-  city.scale.setScalar(city.scale.x + (targetS - city.scale.x) * 0.15);
+  targetScale = THREE.MathUtils.clamp(qrWorld * 12, 0.05, 4.0);
 }
 
 /* =====================================================
@@ -694,7 +684,6 @@ function drawAnnLines() {
     const midX = a.side === 'left' ? (pt.x + edge.x) / 2 - 16 : (pt.x + edge.x) / 2 + 16;
     const midY = (pt.y + edge.y) / 2;
 
-    // Line
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', `M${edge.x},${edge.y} L${midX},${midY} L${pt.x},${pt.y}`);
     path.setAttribute('stroke', `rgba(0,229,255,${0.48 * alpha})`);
@@ -703,13 +692,11 @@ function drawAnnLines() {
     path.setAttribute('fill', 'none');
     svg.appendChild(path);
 
-    // Dot
     const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
     dot.setAttribute('r', '2.5'); dot.setAttribute('fill', `rgba(0,229,255,${0.9 * alpha})`);
     svg.appendChild(dot);
 
-    // Ring
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     ring.setAttribute('cx', pt.x); ring.setAttribute('cy', pt.y);
     ring.setAttribute('r', '5.5'); ring.setAttribute('fill', 'none');
@@ -717,7 +704,6 @@ function drawAnnLines() {
     ring.setAttribute('stroke-width', '1');
     svg.appendChild(ring);
 
-    // Tick
     const tw   = a.side === 'left' ? -8 : 8;
     const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     tick.setAttribute('x1', edge.x); tick.setAttribute('y1', edge.y);

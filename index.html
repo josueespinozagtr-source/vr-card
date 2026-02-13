@@ -579,48 +579,44 @@ function trackQR() {
 function applyQRTransform(loc) {
   const W = 640, H = 480;
 
-  // Normalize corners to [0,1]
   const TL = { x: loc.topLeftCorner.x / W, y: loc.topLeftCorner.y / H };
   const TR = { x: loc.topRightCorner.x / W, y: loc.topRightCorner.y / H };
   const BR = { x: loc.bottomRightCorner.x / W, y: loc.bottomRightCorner.y / H };
   const BL = { x: loc.bottomLeftCorner.x / W, y: loc.bottomLeftCorner.y / H };
 
-  // Center in NDC space
   const cx = ((TL.x + TR.x + BR.x + BL.x) / 4 - 0.5) * 2;
   const cy = -((TL.y + TR.y + BR.y + BL.y) / 4 - 0.5) * 2;
 
-  // Calculate QR dimensions
   const edgeT = Math.hypot(TR.x - TL.x, TR.y - TL.y);
   const edgeB = Math.hypot(BR.x - BL.x, BR.y - BL.y);
-  const edgeL = Math.hypot(BL.x - TL.x, BL.y - TL.y);
-  const edgeR = Math.hypot(BR.x - TR.x, BR.y - TR.y);
-  const ndcW  = (edgeT + edgeB) / 2;
-  const ndcH  = (edgeL + edgeR) / 2;
+  const ndcAvg = (edgeT + edgeB) / 2;   // simplified
 
-  // Depth estimation
-  const ndcAvg = (ndcW + ndcH) / 2;
-  const depth  = THREE.MathUtils.clamp(0.2 / (ndcAvg + 0.001), 0.1, 10.0);
+  // ── Main tuning parameters ──
+  const DESIRED_DISTANCE = 1.4;           // meters — feel free to try 0.9–2.0
+  const SCALE_MULTIPLIER = 2.2;           // most important knob — 1.2 to 3.5 range
 
-  // Convert NDC to world space
-  const fov  = THREE.MathUtils.degToRad(cam.fov);
-  const scH  = 2 * Math.tan(fov / 2) * depth;
-  const scW  = scH * cam.aspect;
-  const wx   = cx * scW / 2;
-  const wy   = cy * scH / 2;
-  const wz   = -depth;
+  const depth = DESIRED_DISTANCE;         // ← start simple
+  // or keep perspective attempt: const depth = 0.9 / (ndcAvg + 0.02);
+
+  const fov = THREE.MathUtils.degToRad(cam.fov);
+  const scH = 2 * Math.tan(fov / 2) * depth;
+  const scW = scH * cam.aspect;
+
+  const wx = cx * scW / 2;
+  const wy = cy * scH / 2;
+  const wz = -depth;
 
   targetPos.set(wx, wy, wz);
 
-  // Calculate rotation from QR orientation
   const yaw   = Math.atan2(-(TR.y - TL.y), TR.x - TL.x);
-  const pitch = Math.atan2((edgeT - edgeB) * 2.2, 1.0) * 0.55;
-  const roll  = Math.atan2((edgeR - edgeL) * 2.2, 1.0) * 0.55;
-
+  const pitch = Math.atan2((edgeT - edgeB) * 2.0, 1.0) * 0.6;
+  const roll  = Math.atan2((edgeR - edgeL) * 2.0, 1.0) * 0.6;
   targetRot.set(pitch, yaw, roll);
 
-  // Scale based on QR size
-  const qrWorld = ndcW * scW;
-  targetScale = THREE.MathUtils.clamp(qrWorld * 14, 0.06, 5.0);
+  const qrWorld = ndcAvg * scW;
+  targetScale = qrWorld * SCALE_MULTIPLIER;
+
+  console.log(`scale → ${targetScale.toFixed(3)}  |  depth ${depth.toFixed(2)}m  |  ndc ${ndcAvg.toFixed(3)}`);
 }
 
 /* =====================================================
